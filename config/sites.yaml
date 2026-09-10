@@ -75,3 +75,35 @@ sites:
         lat: -34.52833
         lon: -58.46155
         elevation_m: 8
+
+  # Coordenadas confirmadas por captura satelital ("Loma Bola Vuelo y
+  # Aventura - Parapente").
+  - id: loma_bola
+    name: "Loma Bola (Tucumán, AR)"
+    timezone: "America/Argentina/Tucuman"
+    points:
+      launch:
+        lat: -26.82281
+        lon: -65.36882
+        elevation_m: 1355
+
+  # Coordenadas confirmadas por captura satelital ("Parapente Merlo").
+  - id: merlo
+    name: "Merlo (San Luis, AR)"
+    timezone: "America/Argentina/San_Luis"
+    points:
+      launch:
+        lat: -32.36947
+        lon: -64.93910
+        elevation_m: 1772
+
+  # Coordenadas confirmadas por captura satelital ("Mirador De Cuchi
+  # Corral, Escuela de Parapente").
+  - id: cuchi_corral
+    name: "Cuchi Corral (Córdoba, AR)"
+    timezone: "America/Argentina/Cordoba"
+    points:
+      launch:
+        lat: -30.96712
+        lon: -64.58465
+        elevation_m: 1103
