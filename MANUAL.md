@@ -104,13 +104,31 @@ canales.
    [@userinfobot](https://t.me/userinfobot), que le devuelve su ID
    numérico al instante. Ese número es el `telegram_chat_id`.
 
-**Cómo editarlo**: Settings → Secrets and variables → Actions →
-`SUBSCRIBERS_JSON` → lápiz → pegás el JSON completo actualizado → Update
-secret. No hay forma de "agregar una persona" sin reescribir el JSON
-entero (los secrets de GitHub no son editables parcialmente) — conviene
-guardar una copia local del JSON actual (fuera del repo, o en un archivo
-que esté en `.gitignore`) para no perder el historial de quién está
-suscrito.
+### Editar o darse de baja (self-service, vía el mismo formulario)
+
+El formulario tiene una pregunta **"Acción"** con dos opciones:
+
+- **Alta o actualizar condición**: si volvés a completar el formulario
+  para el mismo sitio con el mismo tipo de capa (mismo `kind`+`point`+
+  `metros`), la sincronización **reemplaza** la condición anterior por la
+  nueva — así se edita, no se acumula. Si es una capa distinta (otra
+  altura, otro punto), se agrega al lado de las que ya tenías.
+- **Baja (borrarme de este sitio)**: en la próxima sincronización se
+  borran todas tus capas de ese sitio — dejás de recibir avisos ahí. Para
+  volver a sumarte alcanza con completar el form de nuevo con "Alta".
+
+Esto lo resuelve automáticamente `scripts/sync_subscribers.py` procesando
+las respuestas en el orden en que llegaron (la última gana). No hace falta
+tocar la planilla ni el secret a mano para editar o dar de baja a alguien.
+
+### Editar el secret a mano (excepcional)
+
+Para casos puntuales (o si el formulario no tiene la pregunta "Acción"
+todavía): Settings → Secrets and variables → Actions → `SUBSCRIBERS_JSON`
+→ lápiz → pegás el JSON completo actualizado → Update secret. Ojo: la
+próxima sincronización automática (sección 7) **reescribe esto** con lo
+que diga la planilla en ese momento — un cambio manual no sobrevive al
+siguiente sync si la planilla dice otra cosa.
 
 ### Campos de una capa (`layers`), igual en ambos archivos
 
