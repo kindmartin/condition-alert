@@ -1,6 +1,6 @@
-# Manual de usuario — Condition Alert
+# Manual de usuario — Amigo del Viento
 
-Bot que revisa el pronóstico de viento (Open-Meteo) para sitios de vuelo
+Revisa el pronóstico de viento (Open-Meteo) para sitios de vuelo
 cada hora, y avisa a cada suscriptor (por mail y/o Telegram) solo cuando se
 cumplen SUS propias condiciones. Corre gratis en la nube (GitHub Actions) —
 no hace falta tener ninguna PC prendida.

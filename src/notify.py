@@ -66,12 +66,12 @@ def build_email_body(site, date_str, qualifying_hours, layers, subscriber_name=N
         lines.append("")
 
     lines.append("Pronóstico automático de Open-Meteo — verificá siempre las condiciones en el lugar antes de volar.")
-    lines.append("Config: config/sites.yaml")
+    lines.append("— Amigo del Viento 🪂")
     return "\n".join(lines)
 
 
 def subject_line(site, date_str, n_hours):
-    return f"Alerta de viento: {site['name']} — {n_hours} hora(s) volable(s) el {date_str}"
+    return f"Amigo del Viento — {site['name']}: {n_hours} hora(s) volable(s) el {date_str}"
 
 
 def send_email(subject, body, smtp_user, smtp_password, to_addr, smtp_host="smtp.gmail.com", smtp_port=587):

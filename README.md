@@ -1,12 +1,20 @@
-# Condition Alert — alerta de viento para parapente
+# Amigo del Viento — alerta de viento para parapente
 
-Bot que corre cada hora en GitHub Actions, consulta Open-Meteo para los sitios
+(nombre técnico/repo: `condition-alert`)
+
+Corre cada hora en GitHub Actions, consulta Open-Meteo para los sitios
 definidos en [`config/sites.yaml`](config/sites.yaml), y manda un email (uno
 por suscriptor por día) cuando el viento en superficie/altura cumple las
 condiciones que ese suscriptor configuró.
 
 Para una guía paso a paso de uso ver [`MANUAL.md`](MANUAL.md). Este README es
 la referencia técnica más corta.
+
+**¿Por qué no usar Windy Alerts o similares?** Esas herramientas evalúan un
+solo punto en superficie con direcciones cardinales gruesas (N/NE/E...) y
+son de pago para el uso con alertas. Acá cada suscriptor puede pedir varias
+capas de altura a la vez (superficie + AGL + MSL) con rangos de grados
+exactos, gratis, y personalizable porque es código propio.
 
 ## Cómo funciona
 
