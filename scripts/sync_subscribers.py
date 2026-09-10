@@ -109,12 +109,11 @@ def build_layer(row, cols, index):
 
 
 def sync(dry_run=False):
-    sheet_id = os.environ["SHEET_ID"]
-    service_account_json = os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]
+    csv_url = os.environ["SHEET_CSV_URL"]
 
     valid_site_ids = {s["id"] for s in yaml.safe_load(SITES_PATH.read_text(encoding="utf-8"))["sites"]}
 
-    rows = fetch_rows(sheet_id, service_account_json)
+    rows = fetch_rows(csv_url)
     if not rows:
         print("No rows in sheet, nothing to sync")
         return
