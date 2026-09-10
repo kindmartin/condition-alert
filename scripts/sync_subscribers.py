@@ -94,8 +94,12 @@ def parse_kind(value):
     return "surface"
 
 
+REMOVE_KEYWORDS = ("baja", "remover", "eliminar", "quitar", "borrar")
+
+
 def parse_accion(value):
-    return "baja" in normalize(value)
+    v = normalize(value)
+    return any(keyword in v for keyword in REMOVE_KEYWORDS)
 
 
 def build_layer(row, cols):
@@ -143,7 +147,7 @@ def sync(dry_run=False):
         "name": find_col(headers_norm, "nombre"),
         "email": find_col(headers_norm, "email"),
         "telegram": find_col(headers_norm, "telegram"),
-        "accion": find_col(headers_norm, "accion"),
+        "accion": find_col(headers_norm, "accion") or find_col(headers_norm, "baja"),
         "site": find_col(headers_norm, "sitio"),
         "point": find_col(headers_norm, "referencia"),
         "kind": find_col(headers_norm, "capa"),
