@@ -5,7 +5,9 @@
       "name": "Nombre Apellido",
       "email": "piloto@example.com",
       "telegram_chat_id": 123456789,
+      "alert_name": "Alerta 1",
       "_comment_channels": "email y/o telegram_chat_id son opcionales pero al menos uno es obligatorio; si estan los dos, se manda por ambos.",
+      "_comment_alert_name": "opcional. Si la misma persona quiere varias alertas independientes en el mismo sitio (ej. una para termica suave y otra para viento fuerte), cada una es una entrada distinta en esta lista con su propio alert_name.",
       "layers": [
         {
           "id": "surface_launch",
@@ -23,6 +25,20 @@
           "meters": 2000,
           "min_speed_kmh": 20,
           "max_speed_kmh": 60
+        }
+      ]
+    },
+    {
+      "name": "Nombre Apellido",
+      "email": "piloto@example.com",
+      "alert_name": "Alerta 2",
+      "layers": [
+        {
+          "id": "surface_launch",
+          "point": "launch",
+          "kind": "surface",
+          "min_speed_kmh": 30,
+          "max_speed_kmh": 50
         }
       ]
     }

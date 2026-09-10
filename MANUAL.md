@@ -14,18 +14,18 @@ Cada hora, en un servidor de GitHub (no en tu compu):
    altura, y nubosidad.
 2. **Calcula el viento a las alturas que interesan** (ej. "1000m arriba
    del despegue") interpolando entre los niveles que da la API.
-3. Para **cada suscriptor** de cada sitio, chequea hora por hora del día de
-   hoy si TODAS las condiciones que ese suscriptor configuró se cumplen a
-   la vez (viento mínimo/máximo, dirección, ráfaga máxima). Dos pilotos del
-   mismo cerro pueden tener condiciones totalmente distintas.
-4. Si encuentra al menos una hora que cumple, y todavía no le mandó mail
-   a ese suscriptor por ese sitio hoy, **le manda un mail** con el listado
+3. Para **cada alerta** de cada suscriptor de cada sitio, chequea hora por
+   hora del día de hoy si TODAS las capas de ESA alerta se cumplen a la vez
+   (viento mínimo/máximo, dirección, ráfaga máxima). Una persona puede
+   tener varias alertas independientes en el mismo sitio (sección 2) — se
+   evalúan por separado, no hace falta que todas se cumplan juntas.
+4. Si encuentra al menos una hora que cumple, y todavía no le mandó aviso
+   por ESA alerta hoy, **le manda un mail/Telegram** con el listado
    completo de horas que califican y los valores reales.
-5. Guarda en el repo a quién ya le mandó, para no repetir el mismo mail
-   24 veces por hora mientras dure la ventana buena.
+5. Guarda en el repo a quién (y a qué alerta puntual) ya le mandó, para no
+   repetir el mismo aviso 24 veces por hora mientras dure la ventana buena.
 
-Al otro día (hora local del sitio), el conteo arranca de nuevo, por
-suscriptor.
+Al otro día (hora local del sitio), el conteo arranca de nuevo, por alerta.
 
 ## 2. Dos lugares de configuración distintos
 
@@ -68,6 +68,7 @@ que es solo de referencia con datos falsos, no se usa en runtime):
       "name": "Juan Pérez",
       "email": "juan@example.com",
       "telegram_chat_id": 123456789,
+      "alert_name": "Alerta 1",
       "layers": [
         {
           "id": "surface_launch",
@@ -85,12 +86,29 @@ que es solo de referencia con datos falsos, no se usa en runtime):
 ```
 
 La clave de primer nivel (`"gruenten"`) tiene que ser el mismo `id` que el
-sitio en `sites.yaml`. Cada suscriptor puede tener tantas capas como
-quiera; TODAS deben cumplirse a la vez para que le llegue el aviso.
+sitio en `sites.yaml`. Cada entrada de la lista es **una alerta** (no
+necesariamente una persona distinta): todas sus capas deben cumplirse a la
+vez (Y) para que le llegue el aviso de esa alerta puntual.
 
 `email` y `telegram_chat_id` son ambos opcionales, pero un suscriptor
 necesita **al menos uno** de los dos. Si tiene los dos, le llega por ambos
 canales.
+
+### Varias alertas independientes en el mismo sitio
+
+La misma persona (mismo email o `telegram_chat_id`) puede aparecer más de
+una vez en la lista de un sitio, cada vez con un `alert_name` distinto
+(ej. `"Alerta 1"`, `"Alerta 2"`) y sus propias capas. Cada una se evalúa
+por separado — si CUALQUIERA de sus alertas se cumple, recibe un aviso
+identificando cuál (O entre alertas, Y adentro de cada una). Así una
+persona puede pedir, por ejemplo, "avisame si sopla suave para térmica" Y
+por separado "avisame si sopla fuerte para travesía", sin que una
+condición interfiera con la otra. Ver el ejemplo completo en
+[`config/subscribers.example.json`](config/subscribers.example.json).
+
+`alert_name` es opcional — si se omite, esa persona tiene una sola alerta
+"sin nombre" en ese sitio (comportamiento de antes de que existiera esta
+función).
 
 ### Cómo conseguir un `telegram_chat_id`
 
@@ -106,16 +124,22 @@ canales.
 
 ### Editar o darse de baja (self-service, vía el mismo formulario)
 
-El formulario tiene una pregunta **"Acción"** con dos opciones:
+El formulario tiene dos preguntas clave para esto: **"Alta, Modificación o
+Baja"** y **"Nombre de la Alerta"** (`Alerta 1`/`Alerta 2`/`Alerta 3`, para
+distinguir cuál de tus alertas en ese sitio estás tocando si tenés más de
+una — ver "Varias alertas independientes" en la sección 2).
 
-- **Alta o actualizar condición**: si volvés a completar el formulario
-  para el mismo sitio con el mismo tipo de capa (mismo `kind`+`point`+
-  `metros`), la sincronización **reemplaza** la condición anterior por la
-  nueva — así se edita, no se acumula. Si es una capa distinta (otra
-  altura, otro punto), se agrega al lado de las que ya tenías.
-- **Baja (borrarme de este sitio)**: en la próxima sincronización se
-  borran todas tus capas de ese sitio — dejás de recibir avisos ahí. Para
-  volver a sumarte alcanza con completar el form de nuevo con "Alta".
+- **Nueva Alerta / Reconfigurar una Alerta previa**: si volvés a completar
+  el formulario para el mismo sitio + mismo nombre de alerta + mismo tipo
+  de capa (mismo `kind`+`point`+`metros`), la sincronización **reemplaza**
+  esa condición por la nueva — así se edita, no se acumula. Si es una capa
+  distinta dentro de la misma alerta (otra altura, otro punto), se agrega
+  al lado de las que ya tenía esa alerta.
+- **Remover Alerta**: en la próxima sincronización se borran todas las
+  capas de ESA alerta puntual (identificada por sitio + nombre de alerta)
+  — tus otras alertas en ese sitio, si tenés, quedan intactas. Para volver
+  a sumarla alcanza con completar el form de nuevo con "Nueva Alerta" y el
+  mismo nombre.
 
 Esto lo resuelve automáticamente `scripts/sync_subscribers.py` procesando
 las respuestas en el orden en que llegaron (la última gana). No hace falta
