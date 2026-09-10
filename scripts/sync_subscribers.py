@@ -2,9 +2,17 @@
 
 Runs on its own schedule (not the hourly wind check) since subscribers don't
 change often. The sheet is the source of truth: every run rebuilds the whole
-SUBSCRIBERS_JSON secret from the current rows, matching rows to the same
-person+site by email/telegram_chat_id and merging their layers together (so
-someone can fill the form more than once for the same site to add layers).
+SUBSCRIBERS_JSON secret from the current rows, in the order they were
+submitted (Google Forms appends chronologically). Rows are processed with
+"last submission wins" semantics per (site, person):
+
+- Resubmitting the same kind of layer (same kind+point+meters) for a site
+  REPLACES the earlier one, so filling the form again is how you edit a
+  condition — it doesn't just pile up.
+- A different kind+point+meters combo is a separate layer, kept alongside.
+- Choosing "Baja" in the Acción question clears every layer for that
+  person at that site — that's how someone unsubscribes, no need to edit
+  the spreadsheet by hand. A later "Alta" submission re-subscribes them.
 
 Column headers are matched by keyword, not exact text, so small wording
 edits in the Google Form don't break this (see find_col below).
@@ -86,10 +94,14 @@ def parse_kind(value):
     return "surface"
 
 
-def build_layer(row, cols, index):
+def parse_accion(value):
+    return "baja" in normalize(value)
+
+
+def build_layer(row, cols):
     kind = parse_kind(cell(row, cols["kind"]))
     point = parse_point(cell(row, cols["point"]))
-    layer = {"id": f"{kind}_{point}_{index}", "point": point, "kind": kind}
+    layer = {"point": point, "kind": kind}
 
     if kind != "surface":
         meters = parse_float(cell(row, cols["meters"]))
@@ -131,6 +143,7 @@ def sync(dry_run=False):
         "name": find_col(headers_norm, "nombre"),
         "email": find_col(headers_norm, "email"),
         "telegram": find_col(headers_norm, "telegram"),
+        "accion": find_col(headers_norm, "accion"),
         "site": find_col(headers_norm, "sitio"),
         "point": find_col(headers_norm, "referencia"),
         "kind": find_col(headers_norm, "capa"),
@@ -145,10 +158,13 @@ def sync(dry_run=False):
     if missing:
         print(f"ERROR: no encontré columnas para {missing} en el encabezado {rows[0]}", file=sys.stderr)
         sys.exit(1)
+    if cols["accion"] is None:
+        print("AVISO: no hay columna 'Acción' en el formulario todavía — todas las filas se tratan como alta/edición, nadie se puede dar de baja por el formulario.")
 
-    subscribers_by_site = {}
-    # key: (site_id, email or telegram) -> subscriber dict, so repeat submissions
-    # from the same person for the same site merge their layers together.
+    # key: (site_id, email or telegram) -> {name, email, telegram_chat_id,
+    # layers: {signature: layer}, removed}. Rows are processed in sheet order
+    # (= chronological), so the last submission for a given signature wins,
+    # and a "Baja" row wipes everything that person had at that site so far.
     index = {}
 
     for row_num, row in enumerate(rows[1:], start=2):
@@ -158,6 +174,7 @@ def sync(dry_run=False):
         telegram_chat_id = int(telegram_raw) if telegram_raw.isdigit() else None
         site_raw = cell(row, cols["site"])
         site_id = match_site_id(site_raw, valid_site_ids)
+        is_baja = cols["accion"] is not None and parse_accion(cell(row, cols["accion"]))
 
         if site_id is None:
             print(f"[fila {row_num}] sitio {site_raw!r} no matchea ningún id de sites.yaml, se descarta")
@@ -166,22 +183,37 @@ def sync(dry_run=False):
             print(f"[fila {row_num}] sin email ni telegram_chat_id, se descarta")
             continue
 
-        layer, error = build_layer(row, cols, row_num)
+        key = (site_id, email or f"tg:{telegram_chat_id}")
+        state = index.setdefault(key, {"name": name, "email": email, "telegram_chat_id": telegram_chat_id, "layers": {}})
+        state["name"] = name  # keep the latest name too
+
+        if is_baja:
+            state["layers"].clear()
+            print(f"[fila {row_num}] baja de {email or telegram_chat_id} en {site_id}")
+            continue
+
+        layer, error = build_layer(row, cols)
         if error:
             print(f"[fila {row_num}] {error}")
             continue
 
-        key = (site_id, email or f"tg:{telegram_chat_id}")
-        if key not in index:
-            subscriber = {"name": name}
-            if email:
-                subscriber["email"] = email
-            if telegram_chat_id:
-                subscriber["telegram_chat_id"] = telegram_chat_id
-            subscriber["layers"] = []
-            index[key] = subscriber
-            subscribers_by_site.setdefault(site_id, []).append(subscriber)
-        index[key]["layers"].append(layer)
+        signature = (layer["kind"], layer["point"], layer.get("meters"))
+        state["layers"][signature] = layer
+
+    subscribers_by_site = {}
+    for (site_id, _key), state in index.items():
+        if not state["layers"]:
+            continue
+        subscriber = {"name": state["name"]}
+        if state["email"]:
+            subscriber["email"] = state["email"]
+        if state["telegram_chat_id"]:
+            subscriber["telegram_chat_id"] = state["telegram_chat_id"]
+        subscriber["layers"] = [
+            {**layer, "id": f"{layer['kind']}_{layer['point']}_{i}"}
+            for i, layer in enumerate(state["layers"].values())
+        ]
+        subscribers_by_site.setdefault(site_id, []).append(subscriber)
 
     total = sum(len(v) for v in subscribers_by_site.values())
     print(f"Suscriptores encontrados: {total} en {len(subscribers_by_site)} sitio(s)")
