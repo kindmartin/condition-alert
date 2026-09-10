@@ -10,6 +10,9 @@ la referencia técnica más corta.
 
 ## Cómo funciona
 
+0. Canales de aviso: mail (siempre disponible) y/o Telegram (opcional, si
+   el suscriptor trae `telegram_chat_id` y está el secret
+   `TELEGRAM_BOT_TOKEN`). Un suscriptor puede tener uno o ambos.
 1. `.github/workflows/wind-check.yml` corre `python src/main.py` cada hora.
 2. `src/fetch_forecast.py` pide a Open-Meteo el pronóstico horario (viento
    en superficie y en niveles de presión 1000-500 hPa, nubosidad) para todos
@@ -57,6 +60,8 @@ secret, en https://github.com/kindmartin/condition-alert/settings/secrets/action
 
 - `GMAIL_USER`: la cuenta de Gmail que envía.
 - `GMAIL_APP_PASSWORD`: el App Password del paso 1.
+- `TELEGRAM_BOT_TOKEN`: opcional, solo si algún suscriptor usa Telegram
+  (`telegram_chat_id`) — token generado con @BotFather.
 - `SUBSCRIBERS_JSON`: el JSON completo de suscriptores (ver
   `config/subscribers.example.json` para el formato, y `MANUAL.md` para
   cómo agregar gente).

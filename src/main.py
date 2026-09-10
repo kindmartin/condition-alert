@@ -26,7 +26,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent))
 
 from fetch_forecast import collect_points, fetch_forecast
-from notify import build_email_body, send_email, subject_line
+from notify import build_email_body, build_telegram_text, send_email, send_telegram, subject_line
 from rules import evaluate_layers
 from state import load_state, prune_old, save_state, site_date_key
 
@@ -68,6 +68,7 @@ def main():
 
     smtp_user = os.environ.get("GMAIL_USER")
     smtp_password = os.environ.get("GMAIL_APP_PASSWORD")
+    telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN")
 
     for site in sites:
         site_id = site["id"]
@@ -83,33 +84,50 @@ def main():
         }
 
         for subscriber in subscribers:
-            email = subscriber["email"]
-            key = site_date_key(site_id, email, today_str)
+            email = subscriber.get("email")
+            chat_id = subscriber.get("telegram_chat_id")
+            label = email or (f"telegram:{chat_id}" if chat_id else None)
+            if not label:
+                print(f"[{site_id}] subscriber {subscriber.get('name', '?')!r} has neither email nor telegram_chat_id, skipping", file=sys.stderr)
+                continue
 
+            key = site_date_key(site_id, label, today_str)
             if key in state:
-                print(f"[{site_id}] already sent to {email} for {today_str}, skipping")
+                print(f"[{site_id}] already sent to {label} for {today_str}, skipping")
                 continue
 
             hourly_results = evaluate_layers(subscriber["layers"], site, points_hourly)
             qualifying = [h for h in hourly_results if h["time"].startswith(today_str) and h["passed"]]
 
             if not qualifying:
-                print(f"[{site_id}] no qualifying hours for {email} on {today_str}")
+                print(f"[{site_id}] no qualifying hours for {label} on {today_str}")
                 continue
 
             subject = subject_line(site, today_str, len(qualifying))
             body = build_email_body(site, today_str, qualifying, subscriber["layers"], subscriber.get("name"))
 
             if args.dry_run:
-                print(f"[{site_id}] WOULD SEND to {email}:\nSubject: {subject}\n{body}\n")
+                print(f"[{site_id}] WOULD SEND to {label}:\nSubject: {subject}\n{body}\n")
                 continue
 
-            if not smtp_user or not smtp_password:
-                print(f"[{site_id}] qualifying hours found for {email} but GMAIL_USER/GMAIL_APP_PASSWORD not set, skipping send", file=sys.stderr)
+            sent = False
+            if email:
+                if smtp_user and smtp_password:
+                    send_email(subject, body, smtp_user, smtp_password, email)
+                    sent = True
+                else:
+                    print(f"[{site_id}] {label}: GMAIL_USER/GMAIL_APP_PASSWORD not set, skipping email", file=sys.stderr)
+            if chat_id:
+                if telegram_token:
+                    send_telegram(telegram_token, chat_id, build_telegram_text(subject, body))
+                    sent = True
+                else:
+                    print(f"[{site_id}] {label}: TELEGRAM_BOT_TOKEN not set, skipping Telegram", file=sys.stderr)
+
+            if not sent:
                 continue
 
-            send_email(subject, body, smtp_user, smtp_password, email)
-            print(f"[{site_id}] sent digest to {email} for {today_str} ({len(qualifying)} hour(s))")
+            print(f"[{site_id}] sent digest to {label} for {today_str} ({len(qualifying)} hour(s))")
             state[key] = {
                 "sent_at": datetime.now(ZoneInfo(site["timezone"])).isoformat(),
                 "qualifying_hours": [h["time"] for h in qualifying],

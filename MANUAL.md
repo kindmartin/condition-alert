@@ -1,9 +1,9 @@
 # Manual de usuario — Condition Alert
 
 Bot que revisa el pronóstico de viento (Open-Meteo) para sitios de vuelo
-cada hora, y manda un mail a cada suscriptor solo cuando se cumplen SUS
-propias condiciones. Corre gratis en la nube (GitHub Actions) — no hace
-falta tener ninguna PC prendida.
+cada hora, y avisa a cada suscriptor (por mail y/o Telegram) solo cuando se
+cumplen SUS propias condiciones. Corre gratis en la nube (GitHub Actions) —
+no hace falta tener ninguna PC prendida.
 
 ## 1. Qué hace, en criollo
 
@@ -67,6 +67,7 @@ que es solo de referencia con datos falsos, no se usa en runtime):
     {
       "name": "Juan Pérez",
       "email": "juan@example.com",
+      "telegram_chat_id": 123456789,
       "layers": [
         {
           "id": "surface_launch",
@@ -85,7 +86,23 @@ que es solo de referencia con datos falsos, no se usa en runtime):
 
 La clave de primer nivel (`"gruenten"`) tiene que ser el mismo `id` que el
 sitio en `sites.yaml`. Cada suscriptor puede tener tantas capas como
-quiera; TODAS deben cumplirse a la vez para que le llegue el mail.
+quiera; TODAS deben cumplirse a la vez para que le llegue el aviso.
+
+`email` y `telegram_chat_id` son ambos opcionales, pero un suscriptor
+necesita **al menos uno** de los dos. Si tiene los dos, le llega por ambos
+canales.
+
+### Cómo conseguir un `telegram_chat_id`
+
+1. (Una sola vez, lo hacés vos como admin) Creále un bot al proyecto:
+   hablále a [@BotFather](https://t.me/BotFather) en Telegram, mandale
+   `/newbot`, seguí las preguntas, y guardá el token que te da como el
+   secret `TELEGRAM_BOT_TOKEN`.
+2. Compartile a cada suscriptor el nombre de usuario del bot (ej.
+   `@condition_alert_bot`) y pedile que le mande `/start`.
+3. Para saber el `chat_id` de esa persona: que le hable a
+   [@userinfobot](https://t.me/userinfobot), que le devuelve su ID
+   numérico al instante. Ese número es el `telegram_chat_id`.
 
 **Cómo editarlo**: Settings → Secrets and variables → Actions →
 `SUBSCRIBERS_JSON` → lápiz → pegás el JSON completo actualizado → Update
@@ -239,6 +256,8 @@ En Settings → Secrets and variables → Actions del repo:
 - `GMAIL_APP_PASSWORD`: el App Password de esa cuenta (no la contraseña
   normal — se genera en
   [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)).
+- `TELEGRAM_BOT_TOKEN`: el token del bot de Telegram (opcional — solo hace
+  falta si algún suscriptor usa `telegram_chat_id`).
 - `SUBSCRIBERS_JSON`: la lista de suscriptores con sus condiciones (ver
   sección 2).
 
@@ -254,6 +273,8 @@ secret `GMAIL_APP_PASSWORD` — no se toca código.
 | `[sitio] no subscribers, skipping` | Ese `id` de sitio no tiene ninguna entrada en `SUBSCRIBERS_JSON` — es normal si nadie se anotó todavía. |
 | Nunca llega mail a alguien aunque el clima esté bueno | Revisá que sus umbrales no sean demasiado estrictos, y que las coordenadas/elevación del sitio sean correctas. |
 | `SUBSCRIBERS_JSON` inválido | Es JSON, no YAML — comas, comillas dobles y llaves tienen que cerrar bien. Si el workflow falla al arrancar, probablemente sea un typo ahí. |
+| `TELEGRAM_BOT_TOKEN not set, skipping Telegram` | Falta cargar ese secret, o el suscriptor tiene `telegram_chat_id` pero el bot no está creado todavía. |
+| No llega nada por Telegram aunque el `chat_id` esté bien | Esa persona no le mandó `/start` al bot — Telegram no deja que un bot le escriba primero a alguien. |
 | Llega a spam | Marcar el primer mail como "No es spam" en Gmail suele bastar; al ser el mismo remitente todos los días debería dejar de pasar rápido. |
 | El workflow no corrió en la última hora | GitHub Actions en el plan gratuito puede demorar el disparo del cron unos minutos en horarios de mucha carga — es normal. |
 

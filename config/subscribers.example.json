@@ -4,6 +4,8 @@
     {
       "name": "Nombre Apellido",
       "email": "piloto@example.com",
+      "telegram_chat_id": 123456789,
+      "_comment_channels": "email y/o telegram_chat_id son opcionales pero al menos uno es obligatorio; si estan los dos, se manda por ambos.",
       "layers": [
         {
           "id": "surface_launch",

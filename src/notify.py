@@ -1,6 +1,10 @@
-"""Build and send the daily digest email for a site."""
+"""Build and send the daily digest (email and/or Telegram) for a site."""
 import smtplib
 from email.message import EmailMessage
+
+import requests
+
+TELEGRAM_API_URL = "https://api.telegram.org/bot{token}/sendMessage"
 
 
 def layer_label(layer, site):
@@ -81,3 +85,16 @@ def send_email(subject, body, smtp_user, smtp_password, to_addr, smtp_host="smtp
         server.starttls()
         server.login(smtp_user, smtp_password)
         server.send_message(msg)
+
+
+def build_telegram_text(subject, body):
+    return f"{subject}\n\n{body}"
+
+
+def send_telegram(bot_token, chat_id, text):
+    resp = requests.post(
+        TELEGRAM_API_URL.format(token=bot_token),
+        json={"chat_id": chat_id, "text": text},
+        timeout=30,
+    )
+    resp.raise_for_status()
