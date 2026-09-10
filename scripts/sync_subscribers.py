@@ -101,11 +101,21 @@ def parse_kind(value):
 
 
 REMOVE_KEYWORDS = ("baja", "remover", "eliminar", "quitar", "borrar")
+ORIGINAL_ALERT_KEYWORDS = ("sinnombre", "original", "yatenia", "notenia")
 
 
 def parse_accion(value):
     v = normalize(value)
     return any(keyword in v for keyword in REMOVE_KEYWORDS)
+
+
+def parse_alert_name(value):
+    """The dropdown may offer an option meaning "my original, unnamed alert"
+    (for people who subscribed before this question existed) — map that back
+    to the empty string so it matches those legacy rows."""
+    if any(keyword in loose(value) for keyword in ORIGINAL_ALERT_KEYWORDS):
+        return ""
+    return value
 
 
 def build_layer(row, cols):
@@ -186,7 +196,8 @@ def sync(dry_run=False):
         site_raw = cell(row, cols["site"])
         site_id = match_site_id(site_raw, valid_site_ids)
         is_baja = cols["accion"] is not None and parse_accion(cell(row, cols["accion"]))
-        alert_name = cell(row, cols["alert_name"]) if cols["alert_name"] is not None else ""
+        alert_name_raw = cell(row, cols["alert_name"]) if cols["alert_name"] is not None else ""
+        alert_name = parse_alert_name(alert_name_raw)
 
         if site_id is None:
             print(f"[fila {row_num}] sitio {site_raw!r} no matchea ningún id de sites.yaml, se descarta")
