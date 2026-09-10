@@ -110,6 +110,26 @@ condición interfiera con la otra. Ver el ejemplo completo en
 "sin nombre" en ese sitio (comportamiento de antes de que existiera esta
 función).
 
+**Ejemplo real de cómo se combinan dos envíos del formulario** (esto pasó
+de verdad probando el sistema):
+
+| Envío | Sitio | Nombre de la Alerta | Tipo Referencia | Tipo de capa |
+|---|---|---|---|---|
+| 1 | Vicente López | Alerta 1 | Despegue | surface |
+| 2 | Vicente López | Alerta 1 | **Aterrizaje** | surface |
+
+Como los dos comparten sitio + nombre de alerta, van al mismo grupo — pero
+como el **Tipo Referencia difiere** (despegue vs aterrizaje), no es "la
+misma capa reeditada", es una capa distinta. Resultado: **"Alerta 1" queda
+con 2 capas** (viento en despegue Y viento en aterrizaje, ambas tienen que
+cumplirse a la vez). Si el segundo envío hubiera puesto "Despegue" de
+nuevo (igual que el primero), el resultado habría sido reemplazar la
+capa 1 por la 2, no sumarlas.
+
+En criollo: **para editar una capa, repetí exactamente el mismo Tipo
+Referencia + Tipo de capa + Metros que la vez anterior.** Si cambiás
+cualquiera de esos tres, es una capa nueva que se agrega a la alerta.
+
 ### Cómo conseguir un `telegram_chat_id`
 
 1. (Una sola vez, lo hacés vos como admin) Creále un bot al proyecto:
@@ -308,19 +328,24 @@ sitios sin suscriptores (`no subscribers, skipping`).
 ## 7. Alta automática de suscriptores (Google Form)
 
 En vez de editar `SUBSCRIBERS_JSON` a mano por cada persona, hay un
-[formulario de Google](https://docs.google.com/forms/d/e/1FAIpQLSfgtBclpxaOoDpAtOivzvey36IxN9OR6SHIuXAymW0-EaLP0A/viewform)
-que cualquiera puede completar (nombre, email o Telegram, sitio, y una
-condición de viento). Ese es el único link que se comparte — nunca la
+[formulario de Google](https://forms.gle/gz4qX5SmnnXAXsAD6) que cualquiera
+puede completar (nombre, email o Telegram, sitio, nombre de la alerta, y
+la condición de viento). Ese es el único link que se comparte — nunca la
 planilla de respuestas ni el editor del formulario.
 
-Un workflow (`.github/workflows/sync-subscribers.yml`) corre **dos veces
-por día** y:
+Un workflow (`.github/workflows/sync-subscribers.yml`, en `scripts/sync_subscribers.py`)
+corre **dos veces por día** y:
 
 1. Lee las respuestas de la planilla conectada al formulario.
 2. Reconoce el sitio aunque la persona haya elegido la etiqueta linda del
-   desplegable (ej. "cerro_otto (Bariloche)" matchea con el id `cerro_otto`).
-3. Si la misma persona completó el formulario más de una vez para el mismo
-   sitio, junta todas sus respuestas en un solo suscriptor con varias capas.
+   desplegable, con matching flexible que ignora mayúsculas, acentos,
+   espacios y guiones — "Vicente Lopez" y "Vicente Lopez (Buenos Aires)"
+   matchean igual con el id `vicente_lopez`, porque el segundo texto
+   *contiene* al primero (ver `loose()` en `scripts/sync_subscribers.py`
+   si querés el detalle).
+3. Agrupa las respuestas por **sitio + persona + nombre de alerta**
+   (sección 2) — no junta todo lo de una persona en un sitio en una sola
+   alerta, respeta las alertas separadas.
 4. Reescribe el secret `SUBSCRIBERS_JSON` completo con el resultado — la
    planilla es la fuente de verdad; editar el secret a mano se pierde en la
    próxima sincronización.
