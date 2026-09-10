@@ -46,3 +46,15 @@ sites:
         lat: -41.13
         lon: -71.28
         elevation_m: 800
+
+  # Coordenadas de la confitería giratoria (captura satelital, alta precisión).
+  # El despegue real está a metros de este punto, en la ladera norte/oeste,
+  # altura similar. Sin aterrizaje configurado todavía.
+  - id: cerro_otto
+    name: "Cerro Otto (Bariloche, AR)"
+    timezone: "America/Argentina/Salta"
+    points:
+      launch:
+        lat: -41.14408
+        lon: -71.37665
+        elevation_m: 1380
