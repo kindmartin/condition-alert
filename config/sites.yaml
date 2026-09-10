@@ -1,0 +1,124 @@
+# Configuración de sitios de vuelo. Editar sin tocar código.
+#
+# Cada sitio define uno o dos puntos (launch obligatorio, landing opcional)
+# y una lista de capas (layers) a evaluar. TODAS las capas de un sitio deben
+# cumplirse en la misma hora para que esa hora "califique" (logic: all).
+#
+# kind: surface -> viento a 10m del punto
+# kind: agl     -> viento a `meters` sobre la elevación del punto (launch/landing)
+# kind: msl     -> viento a `meters` sobre el nivel del mar
+#
+# directions: lista de rangos {min_deg, max_deg}. Si min_deg > max_deg el
+# rango cruza el norte (ej. 315->45 = NO-N-NE). Omitir "directions" = cualquier dirección.
+#
+# Los valores de umbral de abajo son PLACEHOLDERS de ejemplo — ajustalos a tu
+# criterio real de piloto. Las coordenadas marcadas TBD son aproximadas.
+
+sites:
+  - id: gruenten
+    name: "Grünten (Allgäu, DE)"
+    timezone: "Europe/Berlin"
+    points:
+      launch:
+        lat: 47.553
+        lon: 10.317
+        elevation_m: 1050
+      landing:
+        lat: 47.568   # TBD: refinar pin exacto del aterrizaje (zona Burgberg)
+        lon: 10.335
+        elevation_m: 780
+    logic: all
+    layers:
+      - id: surface_launch
+        point: launch
+        kind: surface
+        min_speed_kmh: 15
+        max_speed_kmh: 35
+        max_gust_kmh: 45
+        directions:
+          - { min_deg: 190, max_deg: 260 }   # S-SW
+      - id: surface_landing
+        point: landing
+        kind: surface
+        min_speed_kmh: 0
+        max_speed_kmh: 20
+        directions:
+          - { min_deg: 190, max_deg: 280 }   # S-SW-O
+      - id: agl1000_launch
+        point: launch
+        kind: agl
+        meters: 1000
+        min_speed_kmh: 15
+        max_speed_kmh: 45
+        directions:
+          - { min_deg: 225, max_deg: 280 }
+      - id: agl1000_landing
+        point: landing
+        kind: agl
+        meters: 1000
+        min_speed_kmh: 10
+        max_speed_kmh: 40
+      - id: msl2000
+        point: launch
+        kind: msl
+        meters: 2000
+        min_speed_kmh: 20
+        max_speed_kmh: 60
+      - id: msl3000
+        point: launch
+        kind: msl
+        meters: 3000
+        min_speed_kmh: 20
+        max_speed_kmh: 70
+
+  # Ejemplo de sitio plano (sin landing separado, sin capas altas).
+  # TBD: confirmar coordenadas reales del sitio antes de activarlo.
+  - id: lujan
+    name: "Luján (Buenos Aires, AR)"
+    timezone: "America/Argentina/Buenos_Aires"
+    points:
+      launch:
+        lat: -34.57
+        lon: -59.05
+        elevation_m: 30
+    logic: all
+    layers:
+      - id: surface_launch
+        point: launch
+        kind: surface
+        min_speed_kmh: 12
+        max_speed_kmh: 30
+        max_gust_kmh: 40
+        directions:
+          - { min_deg: 340, max_deg: 60 }   # N-NE, cruza el norte
+
+  # TBD: pines placeholder, confirmar despegue/aterrizaje reales antes de activarlo.
+  - id: bariloche
+    name: "Bariloche (Río Negro, AR)"
+    timezone: "America/Argentina/Salta"
+    points:
+      launch:
+        lat: -41.15
+        lon: -71.31
+        elevation_m: 1000
+      landing:
+        lat: -41.13
+        lon: -71.28
+        elevation_m: 800
+    logic: all
+    layers:
+      - id: surface_launch
+        point: launch
+        kind: surface
+        min_speed_kmh: 10
+        max_speed_kmh: 30
+      - id: agl1000_launch
+        point: launch
+        kind: agl
+        meters: 1000
+        min_speed_kmh: 15
+        max_speed_kmh: 45
+      - id: msl2000
+        point: launch
+        kind: msl
+        meters: 2000
