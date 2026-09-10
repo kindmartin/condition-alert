@@ -248,7 +248,34 @@ sitios sin suscriptores (`no subscribers, skipping`).
 `SUBSCRIBERS_JSON`, y actualizás el secret completo. No requiere tocar
 `sites.yaml` ni código.
 
-## 7. Los secrets (ya configurados)
+## 7. Alta automática de suscriptores (Google Form)
+
+En vez de editar `SUBSCRIBERS_JSON` a mano por cada persona, hay un
+[formulario de Google](https://docs.google.com/forms/d/e/1FAIpQLSfgtBclpxaOoDpAtOivzvey36IxN9OR6SHIuXAymW0-EaLP0A/viewform)
+que cualquiera puede completar (nombre, email o Telegram, sitio, y una
+condición de viento). Ese es el único link que se comparte — nunca la
+planilla de respuestas ni el editor del formulario.
+
+Un workflow (`.github/workflows/sync-subscribers.yml`) corre **dos veces
+por día** y:
+
+1. Lee las respuestas de la planilla conectada al formulario.
+2. Reconoce el sitio aunque la persona haya elegido la etiqueta linda del
+   desplegable (ej. "cerro_otto (Bariloche)" matchea con el id `cerro_otto`).
+3. Si la misma persona completó el formulario más de una vez para el mismo
+   sitio, junta todas sus respuestas en un solo suscriptor con varias capas.
+4. Reescribe el secret `SUBSCRIBERS_JSON` completo con el resultado — la
+   planilla es la fuente de verdad; editar el secret a mano se pierde en la
+   próxima sincronización.
+
+Necesita 3 secrets adicionales (una sola vez, ver sección 8):
+`GOOGLE_SERVICE_ACCOUNT_JSON`, `SHEET_ID`, `GH_PAT_FOR_SECRETS`.
+
+Para forzar una sincronización manual sin esperar: pestaña Actions →
+**"Sync subscribers"** → Run workflow (tildá `dry_run` para ver qué haría
+sin tocar el secret todavía).
+
+## 8. Los secrets (ya configurados)
 
 En Settings → Secrets and variables → Actions del repo:
 
@@ -259,12 +286,20 @@ En Settings → Secrets and variables → Actions del repo:
 - `TELEGRAM_BOT_TOKEN`: el token del bot de Telegram (opcional — solo hace
   falta si algún suscriptor usa `telegram_chat_id`).
 - `SUBSCRIBERS_JSON`: la lista de suscriptores con sus condiciones (ver
-  sección 2).
+  sección 2). **Ahora la reescribe automáticamente** el workflow de
+  sincronización (sección 7) — no hace falta tocarla a mano salvo para
+  pruebas puntuales.
+- `GOOGLE_SERVICE_ACCOUNT_JSON`: credencial de una cuenta de servicio de
+  Google con permiso de lectura sobre la planilla del formulario.
+- `SHEET_ID`: el ID de esa planilla (el valor entre `/d/` y `/edit` en su URL).
+- `GH_PAT_FOR_SECRETS`: un token de GitHub con permiso "Secrets: Read and
+  write" sobre este repo — lo usa el workflow de sincronización para poder
+  actualizar `SUBSCRIBERS_JSON` por sí mismo.
 
 Si alguna vez se rota el App Password, solo hace falta actualizar el
 secret `GMAIL_APP_PASSWORD` — no se toca código.
 
-## 8. Problemas comunes
+## 9. Problemas comunes
 
 | Síntoma | Causa probable |
 |---|---|
@@ -277,12 +312,15 @@ secret `GMAIL_APP_PASSWORD` — no se toca código.
 | No llega nada por Telegram aunque el `chat_id` esté bien | Esa persona no le mandó `/start` al bot — Telegram no deja que un bot le escriba primero a alguien. |
 | Llega a spam | Marcar el primer mail como "No es spam" en Gmail suele bastar; al ser el mismo remitente todos los días debería dejar de pasar rápido. |
 | El workflow no corrió en la última hora | GitHub Actions en el plan gratuito puede demorar el disparo del cron unos minutos en horarios de mucha carga — es normal. |
+| `sync-subscribers` falla con error 401/403 | El `GH_PAT_FOR_SECRETS` venció, o no tiene permiso "Secrets: Read and write" sobre el repo. |
+| Alguien no aparece después de completar el formulario | El sync corre solo 2 veces por día — puede tardar hasta 12hs. Para probar ya, corré el workflow manual (sección 7). |
 
-## 9. Dónde está cada cosa (para referencia)
+## 10. Dónde está cada cosa (para referencia)
 
 - Sitios (público): [`config/sites.yaml`](config/sites.yaml)
 - Formato de suscriptores (ejemplo, no real): [`config/subscribers.example.json`](config/subscribers.example.json)
 - Lógica del bot: [`src/`](src)
-- El cron: [`.github/workflows/wind-check.yml`](.github/workflows/wind-check.yml)
+- El cron de viento: [`.github/workflows/wind-check.yml`](.github/workflows/wind-check.yml)
+- El cron de sincronización: [`.github/workflows/sync-subscribers.yml`](.github/workflows/sync-subscribers.yml), lógica en [`scripts/`](scripts)
 - Historial de qué mails ya se mandaron: [`state/sent_log.json`](state/sent_log.json)
 - Detalles técnicos para quien quiera meter mano al código: [`README.md`](README.md)
