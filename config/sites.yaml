@@ -33,20 +33,6 @@ sites:
         lon: -59.05
         elevation_m: 30
 
-  # TBD: pines placeholder, confirmar despegue/aterrizaje reales antes de activarlo.
-  - id: bariloche
-    name: "Bariloche (Río Negro, AR)"
-    timezone: "America/Argentina/Salta"
-    points:
-      launch:
-        lat: -41.15
-        lon: -71.31
-        elevation_m: 1000
-      landing:
-        lat: -41.13
-        lon: -71.28
-        elevation_m: 800
-
   # Coordenadas de la confitería giratoria (captura satelital, alta precisión).
   # El despegue real está a metros de este punto, en la ladera norte/oeste,
   # altura similar. Sin aterrizaje configurado todavía.
