@@ -268,8 +268,15 @@ por día** y:
    planilla es la fuente de verdad; editar el secret a mano se pierde en la
    próxima sincronización.
 
-Necesita 3 secrets adicionales (una sola vez, ver sección 8):
-`GOOGLE_SERVICE_ACCOUNT_JSON`, `SHEET_ID`, `GH_PAT_FOR_SECRETS`.
+Necesita 2 secrets adicionales (una sola vez, ver sección 8):
+`SHEET_CSV_URL`, `GH_PAT_FOR_SECRETS`.
+
+`SHEET_CSV_URL` sale de publicar la planilla como CSV: en la planilla de
+respuestas, **Archivo → Compartir → Publicar en la web** → elegís la hoja
+de respuestas → formato **"Valores separados por comas (.csv)"** →
+Publicar. Te da una URL pública (no aparece en buscadores, pero cualquiera
+que la tenga puede leerla) — copiala tal cual para el secret. Esto evita
+tener que crear un proyecto de Google Cloud o cuenta de servicio.
 
 Para forzar una sincronización manual sin esperar: pestaña Actions →
 **"Sync subscribers"** → Run workflow (tildá `dry_run` para ver qué haría
@@ -289,9 +296,8 @@ En Settings → Secrets and variables → Actions del repo:
   sección 2). **Ahora la reescribe automáticamente** el workflow de
   sincronización (sección 7) — no hace falta tocarla a mano salvo para
   pruebas puntuales.
-- `GOOGLE_SERVICE_ACCOUNT_JSON`: credencial de una cuenta de servicio de
-  Google con permiso de lectura sobre la planilla del formulario.
-- `SHEET_ID`: el ID de esa planilla (el valor entre `/d/` y `/edit` en su URL).
+- `SHEET_CSV_URL`: la URL pública de la planilla publicada como CSV (ver
+  sección 7 para cómo generarla).
 - `GH_PAT_FOR_SECRETS`: un token de GitHub con permiso "Secrets: Read and
   write" sobre este repo — lo usa el workflow de sincronización para poder
   actualizar `SUBSCRIBERS_JSON` por sí mismo.
