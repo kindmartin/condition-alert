@@ -68,3 +68,14 @@ sites:
         lat: -41.15780
         lon: -71.42890
         elevation_m: 1250
+
+  # Coordenadas del despegue confirmadas por captura satelital ("Base salto
+  # Parapente"), no la cumbre (que está a 2260m).
+  - id: piltriquitron
+    name: "Piltriquitrón (El Bolsón, AR)"
+    timezone: "America/Argentina/Salta"
+    points:
+      launch:
+        lat: -41.97461
+        lon: -71.48016
+        elevation_m: 1115
