@@ -2,8 +2,11 @@
 
 Bot que corre cada hora en GitHub Actions, consulta Open-Meteo para los sitios
 definidos en [`config/sites.yaml`](config/sites.yaml), y manda un email (uno
-por sitio por día) cuando el viento en superficie/altura cumple las
-condiciones configuradas.
+por suscriptor por día) cuando el viento en superficie/altura cumple las
+condiciones que ese suscriptor configuró.
+
+Para una guía paso a paso de uso ver [`MANUAL.md`](MANUAL.md). Este README es
+la referencia técnica más corta.
 
 ## Cómo funciona
 
@@ -13,21 +16,27 @@ condiciones configuradas.
    los puntos de todos los sitios en un solo request.
 3. `src/interpolate.py` calcula viento a alturas arbitrarias (ej. "+1000m
    sobre el despegue") interpolando entre niveles de presión.
-4. `src/rules.py` evalúa, para cada hora del día (hora local del sitio), si
-   TODAS las capas configuradas del sitio se cumplen.
-5. Si hay al menos una hora que cumple y todavía no se mandó mail ese día
-   para ese sitio (`state/sent_log.json`), se manda un único digest con todas
-   las horas que califican.
+4. `src/rules.py` evalúa, para cada hora del día (hora local del sitio) y
+   cada suscriptor, si TODAS las capas que ese suscriptor configuró se
+   cumplen a la vez.
+5. Si hay al menos una hora que cumple y todavía no se le mandó mail ese día
+   a ese suscriptor (`state/sent_log.json`), se manda un único digest con
+   todas las horas que califican.
 6. El workflow commitea `state/sent_log.json` de vuelta al repo para
    recordar qué ya se mandó (evita spam de un mail por corrida).
 
-## Configurar un sitio nuevo
+## Dos archivos de configuración distintos
 
-Editar [`config/sites.yaml`](config/sites.yaml) — no hace falta tocar código.
-Cada sitio necesita coordenadas de despegue (y opcionalmente aterrizaje) y
-una lista de capas con los umbrales de viento/dirección que te interesan.
-Los valores que vienen cargados son placeholders de ejemplo: ajustalos a tu
-criterio real antes de confiar en las alertas.
+- **`config/sites.yaml`** (público, commiteado): solo define DÓNDE están
+  los sitios — coordenadas y elevación de despegue/aterrizaje. Nada
+  sensible.
+- **Secret `SUBSCRIBERS_JSON`** (privado, nunca commiteado): la lista real
+  de quién se suscribe a qué sitio, con su email y sus propios umbrales de
+  viento. Va en un secret porque el repo es público y los emails de la
+  gente no deberían quedar expuestos en el código. Ver el formato en
+  [`config/subscribers.example.json`](config/subscribers.example.json)
+  (ese archivo es solo de referencia, con datos falsos — no se usa en
+  runtime).
 
 ## Setup (una sola vez)
 
@@ -39,45 +48,38 @@ https://myaccount.google.com/apppasswords (elegí "Correo"/"Otro", copiá el
 password de 16 caracteres).
 
 **No lo pegues en el chat con el asistente ni lo commitees al repo.**
-Cargalo vos mismo como secret de GitHub (ver paso 2).
+Cargalo directo como secret de GitHub (ver paso 2).
 
 ### 2. Secrets del repo
 
-Corré esto vos mismo desde una terminal (te va a pedir el valor de forma
-interactiva, sin mostrarlo en el historial de comandos):
+Vía la web: Settings → Secrets and variables → Actions → New repository
+secret, en https://github.com/kindmartin/condition-alert/settings/secrets/actions
 
-```bash
-gh secret set GMAIL_USER --repo <tu-usuario>/condition-alert
-gh secret set GMAIL_APP_PASSWORD --repo <tu-usuario>/condition-alert
-gh secret set ALERT_TO_EMAIL --repo <tu-usuario>/condition-alert
-```
-
-`ALERT_TO_EMAIL` es la dirección que recibe las alertas (ej.
-`xtrail2explore@gmail.com`).
+- `GMAIL_USER`: la cuenta de Gmail que envía.
+- `GMAIL_APP_PASSWORD`: el App Password del paso 1.
+- `SUBSCRIBERS_JSON`: el JSON completo de suscriptores (ver
+  `config/subscribers.example.json` para el formato, y `MANUAL.md` para
+  cómo agregar gente).
 
 ### 3. Probar
 
 ```bash
 # Local, sin mandar mail ni tocar estado — imprime lo que evaluó:
 pip install -r requirements.txt
+export SUBSCRIBERS_JSON='{"gruenten": [...]}'   # o el contenido real
 python src/main.py --dry-run
 
-# En GitHub, manual y en modo dry-run:
-gh workflow run wind-check.yml -f dry_run=true
-gh run watch
+# En GitHub, manual y en modo dry-run: pestaña Actions -> Wind check ->
+# Run workflow -> tildar dry_run.
 ```
-
-Para forzar un mail real de prueba, ensanchá temporalmente los umbrales de
-un sitio en `sites.yaml` (ej. `min_speed_kmh: 0`, `max_speed_kmh: 999`, sin
-`directions`) y corré `gh workflow run wind-check.yml -f dry_run=false`.
-Volvé los umbrales a valores reales después.
 
 ## Limitaciones conocidas (v1)
 
 - El "techo de nubes" es una estimación (`125 × (temp − punto de rocío)`),
   no un dato directo de Open-Meteo (que no lo expone de forma confiable).
-- Un mail por sitio por día: si el pronóstico mejora más tarde en el día
-  (después de ya haber mandado el mail), no se reenvía. Se puede ajustar
-  en `src/main.py` más adelante si hace falta.
+- Un mail por suscriptor por día: si el pronóstico mejora más tarde en el
+  día (después de ya haber mandado el mail), no se reenvía.
 - Coordenadas de Luján y Bariloche, y el aterrizaje de Grünten, son
   aproximadas (`TBD` en `sites.yaml`) — confirmar antes de confiar en ellas.
+- Agregar/sacar suscriptores requiere editar el secret `SUBSCRIBERS_JSON`
+  a mano (sin self-service todavía).

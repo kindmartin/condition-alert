@@ -1,0 +1,28 @@
+{
+  "_comment": "Plantilla del secret SUBSCRIBERS_JSON. No se usa en runtime, es solo referencia — la lista REAL de suscriptores vive en el secret del repo, nunca en un archivo commiteado (son emails personales). Ver MANUAL.md seccion Suscriptores.",
+  "gruenten": [
+    {
+      "name": "Nombre Apellido",
+      "email": "piloto@example.com",
+      "layers": [
+        {
+          "id": "surface_launch",
+          "point": "launch",
+          "kind": "surface",
+          "min_speed_kmh": 15,
+          "max_speed_kmh": 35,
+          "max_gust_kmh": 45,
+          "directions": [{ "min_deg": 190, "max_deg": 260 }]
+        },
+        {
+          "id": "msl2000",
+          "point": "launch",
+          "kind": "msl",
+          "meters": 2000,
+          "min_speed_kmh": 20,
+          "max_speed_kmh": 60
+        }
+      ]
+    }
+  ]
+}

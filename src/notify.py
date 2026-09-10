@@ -43,15 +43,17 @@ def format_cloud_line(cloud):
     return line
 
 
-def build_email_body(site, date_str, qualifying_hours):
-    lines = [
-        f"Ventanas de vuelo en {site['name']} — {date_str} ({site.get('timezone', '')}):",
-        "",
-    ]
+def build_email_body(site, date_str, qualifying_hours, layers, subscriber_name=None):
+    lines = []
+    if subscriber_name:
+        lines.append(f"Hola {subscriber_name},")
+        lines.append("")
+    lines.append(f"Ventanas de vuelo en {site['name']} — {date_str} ({site.get('timezone', '')}):")
+    lines.append("")
     for hour in qualifying_hours:
         hhmm = hour["time"].split("T")[1]
         lines.append(hhmm)
-        for layer in site["layers"]:
+        for layer in layers:
             result = hour["layers"][layer["id"]]
             lines.append(f"  {layer_label(layer, site)}: {format_layer_value(result)}")
         cloud_line = format_cloud_line(hour.get("cloud"))

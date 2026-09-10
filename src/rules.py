@@ -58,20 +58,20 @@ def evaluate_layer(layer, site, points_hourly, hour_index):
     }
 
 
-def evaluate_site(site, points_hourly):
-    """Returns a list of per-hour results: [{time, passed, layers: {...}, cloud: {...}}, ...]."""
+def evaluate_layers(layers, site, points_hourly):
+    """Evaluate one subscriber's layers (AND'd together) against a site's forecast.
+
+    Returns a list of per-hour results: [{time, passed, layers: {...}, cloud: {...}}, ...].
+    """
     ref_point = next(iter(points_hourly))
     times = points_hourly[ref_point]["time"]
-    logic = site.get("logic", "all")
-    if logic != "all":
-        raise ValueError(f"Unsupported site logic: {logic!r} (only 'all' is implemented)")
 
     launch_hourly = points_hourly.get("launch")
     results = []
     for hour_index, time_str in enumerate(times):
         layer_results = {
             layer["id"]: evaluate_layer(layer, site, points_hourly, hour_index)
-            for layer in site["layers"]
+            for layer in layers
         }
         hour_passed = all(r["passed"] for r in layer_results.values())
 

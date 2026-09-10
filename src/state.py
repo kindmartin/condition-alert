@@ -3,8 +3,8 @@ import json
 from datetime import date, timedelta
 
 
-def site_date_key(site_id, date_str):
-    return f"{site_id}|{date_str}"
+def site_date_key(site_id, subscriber_email, date_str):
+    return f"{site_id}|{subscriber_email}|{date_str}"
 
 
 def load_state(path):
