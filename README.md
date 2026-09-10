@@ -25,7 +25,7 @@ Piltriquitrón, Vicente López, Loma Bola, Merlo, Cuchi Corral y Luján
 
 ## Cómo sumarte (como piloto)
 
-Completá el [formulario de alta](https://docs.google.com/forms/d/e/1FAIpQLSfgtBclpxaOoDpAtOivzvey36IxN9OR6SHIuXAymW0-EaLP0A/viewform):
+Completá el [formulario de alta](https://forms.gle/gz4qX5SmnnXAXsAD6):
 elegís tu sitio, cómo querés que te avisen (mail y/o Telegram), y la
 condición de viento que te interesa. Se sincroniza solo, un par de veces
 por día — no hace falta pedirle nada a nadie.
