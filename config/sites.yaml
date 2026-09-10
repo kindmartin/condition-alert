@@ -65,3 +65,13 @@ sites:
         lat: -41.97461
         lon: -71.48016
         elevation_m: 1115
+
+  # Sitio costero, coordenadas confirmadas por captura satelital.
+  - id: vicente_lopez
+    name: "Vicente López (Buenos Aires, AR)"
+    timezone: "America/Argentina/Buenos_Aires"
+    points:
+      launch:
+        lat: -34.52833
+        lon: -58.46155
+        elevation_m: 8
