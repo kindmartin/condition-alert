@@ -164,7 +164,7 @@ def sync(dry_run=False):
         "email": find_col(headers_norm, "email"),
         "telegram": find_col(headers_norm, "telegram"),
         "accion": find_col(headers_norm, "accion") or find_col(headers_norm, "baja"),
-        "alert_name": find_col(headers_norm, "alerta"),
+        "alert_name": find_col(headers_norm, "nombre", "alerta"),
         "site": find_col(headers_norm, "sitio"),
         "point": find_col(headers_norm, "referencia"),
         "kind": find_col(headers_norm, "capa"),
