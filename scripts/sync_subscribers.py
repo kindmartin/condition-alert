@@ -59,12 +59,20 @@ def parse_point(value):
     return "launch"
 
 
+def loose(text):
+    """Collapse spaces/underscores/hyphens so 'vicente_lopez' matches 'Vicente Lopez'."""
+    normalized = normalize(text)
+    for sep in ("_", "-", " "):
+        normalized = normalized.replace(sep, "")
+    return normalized
+
+
 def match_site_id(raw_value, valid_site_ids):
-    """The form's dropdown shows friendly labels like 'cerro_otto (Bariloche)' —
-    match as long as a known site id appears anywhere in the answer."""
-    normalized = normalize(raw_value)
+    """The form's dropdown shows friendly labels like 'cerro_otto (Bariloche)' or
+    'Vicente Lopez' — match loosely, ignoring case/accents/separators."""
+    loose_value = loose(raw_value)
     for site_id in valid_site_ids:
-        if normalize(site_id) in normalized:
+        if loose(site_id) in loose_value:
             return site_id
     return None
 
