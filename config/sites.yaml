@@ -58,3 +58,13 @@ sites:
         lat: -41.14408
         lon: -71.37665
         elevation_m: 1380
+
+  # Coordenadas del despegue confirmadas por captura satelital.
+  - id: cerro_san_martin
+    name: "Cerro San Martín / La Vieja (Bariloche, AR)"
+    timezone: "America/Argentina/Salta"
+    points:
+      launch:
+        lat: -41.15780
+        lon: -71.42890
+        elevation_m: 1250
