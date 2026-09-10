@@ -86,10 +86,15 @@ def main():
         for subscriber in subscribers:
             email = subscriber.get("email")
             chat_id = subscriber.get("telegram_chat_id")
-            label = email or (f"telegram:{chat_id}" if chat_id else None)
-            if not label:
+            alert_name = subscriber.get("alert_name")
+            identity = email or (f"telegram:{chat_id}" if chat_id else None)
+            if not identity:
                 print(f"[{site_id}] subscriber {subscriber.get('name', '?')!r} has neither email nor telegram_chat_id, skipping", file=sys.stderr)
                 continue
+            # Someone can have several independent named alerts on the same
+            # site (each with its own layers) — the state key must include
+            # the alert name so they're deduped/sent independently.
+            label = f"{identity}#{alert_name}" if alert_name else identity
 
             key = site_date_key(site_id, label, today_str)
             if key in state:
@@ -103,8 +108,8 @@ def main():
                 print(f"[{site_id}] no qualifying hours for {label} on {today_str}")
                 continue
 
-            subject = subject_line(site, today_str, len(qualifying))
-            body = build_email_body(site, today_str, qualifying, subscriber["layers"], subscriber.get("name"))
+            subject = subject_line(site, today_str, len(qualifying), alert_name)
+            body = build_email_body(site, today_str, qualifying, subscriber["layers"], subscriber.get("name"), alert_name)
 
             if args.dry_run:
                 print(f"[{site_id}] WOULD SEND to {label}:\nSubject: {subject}\n{body}\n")

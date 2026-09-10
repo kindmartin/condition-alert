@@ -4,15 +4,21 @@ Runs on its own schedule (not the hourly wind check) since subscribers don't
 change often. The sheet is the source of truth: every run rebuilds the whole
 SUBSCRIBERS_JSON secret from the current rows, in the order they were
 submitted (Google Forms appends chronologically). Rows are processed with
-"last submission wins" semantics per (site, person):
+"last submission wins" semantics per (site, person, named alert):
 
-- Resubmitting the same kind of layer (same kind+point+meters) for a site
-  REPLACES the earlier one, so filling the form again is how you edit a
-  condition — it doesn't just pile up.
-- A different kind+point+meters combo is a separate layer, kept alongside.
-- Choosing "Baja" in the Acción question clears every layer for that
-  person at that site — that's how someone unsubscribes, no need to edit
-  the spreadsheet by hand. A later "Alta" submission re-subscribes them.
+- A person can have several independent alerts on the same site (the
+  "Nombre de la Alerta" question — e.g. "Alerta 1", "Alerta 2"). Each named
+  alert is evaluated on its own: main.py sends a notification whenever ANY
+  one of them qualifies, not only when all of a person's conditions hold
+  at once (that AND behavior still applies *within* one named alert, for
+  people who stack several layers — surface + altitude — into one alert).
+- Resubmitting the same kind of layer (same kind+point+meters) under the
+  same alert name REPLACES the earlier one — that's how you edit it.
+- Choosing "Baja"/"Remover" clears that specific named alert only, leaving
+  any other alerts the person has on that site untouched. A later "Alta"
+  submission with the same name re-creates it.
+- Submissions without an alert name (or before this feature existed) fall
+  into a single unnamed alert per person+site, same behavior as before.
 
 Column headers are matched by keyword, not exact text, so small wording
 edits in the Google Form don't break this (see find_col below).
@@ -148,6 +154,7 @@ def sync(dry_run=False):
         "email": find_col(headers_norm, "email"),
         "telegram": find_col(headers_norm, "telegram"),
         "accion": find_col(headers_norm, "accion") or find_col(headers_norm, "baja"),
+        "alert_name": find_col(headers_norm, "alerta"),
         "site": find_col(headers_norm, "sitio"),
         "point": find_col(headers_norm, "referencia"),
         "kind": find_col(headers_norm, "capa"),
@@ -165,10 +172,10 @@ def sync(dry_run=False):
     if cols["accion"] is None:
         print("AVISO: no hay columna 'Acción' en el formulario todavía — todas las filas se tratan como alta/edición, nadie se puede dar de baja por el formulario.")
 
-    # key: (site_id, email or telegram) -> {name, email, telegram_chat_id,
-    # layers: {signature: layer}, removed}. Rows are processed in sheet order
-    # (= chronological), so the last submission for a given signature wins,
-    # and a "Baja" row wipes everything that person had at that site so far.
+    # key: (site_id, email-or-telegram, alert_name) -> {name, email,
+    # telegram_chat_id, alert_name, layers: {signature: layer}}. Rows are
+    # processed in sheet order (= chronological), so the last submission for
+    # a given signature wins, and a "Baja" row wipes just that named alert.
     index = {}
 
     for row_num, row in enumerate(rows[1:], start=2):
@@ -179,6 +186,7 @@ def sync(dry_run=False):
         site_raw = cell(row, cols["site"])
         site_id = match_site_id(site_raw, valid_site_ids)
         is_baja = cols["accion"] is not None and parse_accion(cell(row, cols["accion"]))
+        alert_name = cell(row, cols["alert_name"]) if cols["alert_name"] is not None else ""
 
         if site_id is None:
             print(f"[fila {row_num}] sitio {site_raw!r} no matchea ningún id de sites.yaml, se descarta")
@@ -187,13 +195,17 @@ def sync(dry_run=False):
             print(f"[fila {row_num}] sin email ni telegram_chat_id, se descarta")
             continue
 
-        key = (site_id, email or f"tg:{telegram_chat_id}")
-        state = index.setdefault(key, {"name": name, "email": email, "telegram_chat_id": telegram_chat_id, "layers": {}})
+        identity = email or f"tg:{telegram_chat_id}"
+        key = (site_id, identity, alert_name)
+        state = index.setdefault(
+            key,
+            {"name": name, "email": email, "telegram_chat_id": telegram_chat_id, "alert_name": alert_name, "layers": {}},
+        )
         state["name"] = name  # keep the latest name too
 
         if is_baja:
             state["layers"].clear()
-            print(f"[fila {row_num}] baja de {email or telegram_chat_id} en {site_id}")
+            print(f"[fila {row_num}] baja de {identity} en {site_id}" + (f" (alerta {alert_name!r})" if alert_name else ""))
             continue
 
         layer, error = build_layer(row, cols)
@@ -205,7 +217,7 @@ def sync(dry_run=False):
         state["layers"][signature] = layer
 
     subscribers_by_site = {}
-    for (site_id, _key), state in index.items():
+    for (site_id, _identity, _alert_name), state in index.items():
         if not state["layers"]:
             continue
         subscriber = {"name": state["name"]}
@@ -213,6 +225,8 @@ def sync(dry_run=False):
             subscriber["email"] = state["email"]
         if state["telegram_chat_id"]:
             subscriber["telegram_chat_id"] = state["telegram_chat_id"]
+        if state["alert_name"]:
+            subscriber["alert_name"] = state["alert_name"]
         subscriber["layers"] = [
             {**layer, "id": f"{layer['kind']}_{layer['point']}_{i}"}
             for i, layer in enumerate(state["layers"].values())

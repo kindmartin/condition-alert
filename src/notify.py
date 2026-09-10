@@ -47,12 +47,16 @@ def format_cloud_line(cloud):
     return line
 
 
-def build_email_body(site, date_str, qualifying_hours, layers, subscriber_name=None):
+def build_email_body(site, date_str, qualifying_hours, layers, subscriber_name=None, alert_name=None):
     lines = []
     if subscriber_name:
         lines.append(f"Hola {subscriber_name},")
         lines.append("")
-    lines.append(f"Ventanas de vuelo en {site['name']} — {date_str} ({site.get('timezone', '')}):")
+    heading = f"Ventanas de vuelo en {site['name']}"
+    if alert_name:
+        heading += f" — {alert_name}"
+    heading += f" — {date_str} ({site.get('timezone', '')}):"
+    lines.append(heading)
     lines.append("")
     for hour in qualifying_hours:
         hhmm = hour["time"].split("T")[1]
@@ -70,8 +74,9 @@ def build_email_body(site, date_str, qualifying_hours, layers, subscriber_name=N
     return "\n".join(lines)
 
 
-def subject_line(site, date_str, n_hours):
-    return f"Amigo del Viento — {site['name']}: {n_hours} hora(s) volable(s) el {date_str}"
+def subject_line(site, date_str, n_hours, alert_name=None):
+    place = f"{site['name']} ({alert_name})" if alert_name else site["name"]
+    return f"Amigo del Viento — {place}: {n_hours} hora(s) volable(s) el {date_str}"
 
 
 def send_email(subject, body, smtp_user, smtp_password, to_addr, smtp_host="smtp.gmail.com", smtp_port=587):
