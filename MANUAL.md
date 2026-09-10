@@ -173,7 +173,7 @@ ráfaga máxima 35:**
 Un mail por suscriptor, por día, así:
 
 ```
-Subject: Alerta de viento: Grünten (Allgäu, DE) — 3 hora(s) volable(s) el 2026-09-14
+Subject: Amigo del Viento — Grünten (Allgäu, DE): 3 hora(s) volable(s) el 2026-09-14
 
 Hola Juan,
 
@@ -187,13 +187,28 @@ Ventanas de vuelo en Grünten (Allgäu, DE) — 2026-09-14 (Europe/Berlin):
 
 15:00
   ...
+
+Pronóstico automático de Open-Meteo — verificá siempre las condiciones en el lugar antes de volar.
+— Amigo del Viento 🪂
 ```
 
 Solo muestra las capas que ESE suscriptor configuró (no las de todos).
 
 ## 4. Probarlo manualmente (sin esperar a que se cumpla una condición real)
 
-### Opción A — desde la web de GitHub (más simple)
+### Opción A — local, en tu propia máquina
+
+```bash
+pip install -r requirements.txt
+export SUBSCRIBERS_JSON='{"gruenten": [...]}'   # el JSON real o uno de prueba
+python src/main.py --dry-run
+```
+
+Imprime lo que evaluó para cada sitio/suscriptor sin mandar mail ni tocar
+el estado — útil para iterar rápido en la lógica sin depender de GitHub
+Actions.
+
+### Opción B — desde la web de GitHub
 
 1. Andá a la pestaña **[Actions](https://github.com/kindmartin/condition-alert/actions)** del repo.
 2. En la barra izquierda, click en **"Wind check"**.
@@ -213,12 +228,12 @@ algo como:
 
 ```
 [gruenten] no subscribers, skipping
-[bariloche] no qualifying hours for juan@example.com on 2026-09-14
-[bariloche] WOULD SEND to maria@example.com:
-Subject: Alerta de viento: Bariloche...
+[piltriquitron] no qualifying hours for juan@example.com on 2026-09-14
+[piltriquitron] WOULD SEND to maria@example.com:
+Subject: Amigo del Viento — Piltriquitrón...
 ```
 
-### Opción B — forzar un mail real de prueba
+### Opción C — forzar un mail real de prueba
 
 1. En el secret `SUBSCRIBERS_JSON`, poné temporalmente en tu propia entrada
    `min_speed_kmh: 0`, `max_speed_kmh: 999`, y sacá `directions`. Así
@@ -282,7 +297,39 @@ Para forzar una sincronización manual sin esperar: pestaña Actions →
 **"Sync subscribers"** → Run workflow (tildá `dry_run` para ver qué haría
 sin tocar el secret todavía).
 
-## 8. Los secrets (ya configurados)
+## 8. Setup completo (para levantar tu propia instancia desde cero)
+
+Si estás armando esto para otro club/proyecto en vez de sumarte al que ya
+existe, el orden es:
+
+1. **Repo en GitHub**: forkeá o cloná este repo. Necesitás `gh` (GitHub
+   CLI) autenticado y un token con permiso "Contents" + "Workflows: Read
+   and write" sobre tu repo nuevo, para poder pushear código.
+2. **Cuenta de Gmail para enviar** (puede ser una nueva, dedicada):
+   - Activá verificación en 2 pasos: Google Account → Security → 2-Step
+     Verification.
+   - Generá un App Password en
+     [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+     (nombre cualquiera, ej. "amigo-del-viento") → copiás el código de 16
+     caracteres.
+3. **Cargar los secrets básicos** en Settings → Secrets and variables →
+   Actions → New repository secret: `GMAIL_USER` y `GMAIL_APP_PASSWORD`
+   (los de arriba). Nunca los pegues en un chat con un asistente de IA ni
+   los commitees al repo — van directo al formulario de GitHub.
+4. **(Opcional) Bot de Telegram**: @BotFather → `/newbot` → guardás el
+   token como secret `TELEGRAM_BOT_TOKEN`.
+5. **Sitios**: editá `config/sites.yaml` con tus propios lugares (sección 2).
+6. **Suscriptores**: para arrancar rápido, cargá el secret
+   `SUBSCRIBERS_JSON` a mano (formato en
+   [`config/subscribers.example.json`](config/subscribers.example.json)).
+   Para alta automática vía formulario, seguí la sección 7 completa
+   (Google Form → CSV publicado → secrets `SHEET_CSV_URL` y
+   `GH_PAT_FOR_SECRETS`, este último con permiso "Secrets: Read and write"
+   sobre tu repo — se crea en
+   [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)).
+7. **Probar** antes de confiar en que manda mails de verdad: ver sección 4.
+
+### Los secrets (ya configurados en la instancia de kindmartin)
 
 En Settings → Secrets and variables → Actions del repo:
 
@@ -325,8 +372,25 @@ secret `GMAIL_APP_PASSWORD` — no se toca código.
 
 - Sitios (público): [`config/sites.yaml`](config/sites.yaml)
 - Formato de suscriptores (ejemplo, no real): [`config/subscribers.example.json`](config/subscribers.example.json)
-- Lógica del bot: [`src/`](src)
+- Lógica del chequeo de viento, un archivo por responsabilidad:
+  - [`src/fetch_forecast.py`](src/fetch_forecast.py): arma un solo request batcheado a Open-Meteo para todos los puntos de todos los sitios.
+  - [`src/interpolate.py`](src/interpolate.py): calcula viento a alturas arbitrarias interpolando entre niveles de presión.
+  - [`src/rules.py`](src/rules.py): evalúa las capas de un suscriptor contra el pronóstico, hora por hora.
+  - [`src/notify.py`](src/notify.py): arma y manda el mail/Telegram.
+  - [`src/state.py`](src/state.py): lleva el registro de a quién ya se le mandó, para el dedup.
+  - [`src/main.py`](src/main.py): orquesta todo lo anterior, es lo que corre el cron cada hora.
 - El cron de viento: [`.github/workflows/wind-check.yml`](.github/workflows/wind-check.yml)
 - El cron de sincronización: [`.github/workflows/sync-subscribers.yml`](.github/workflows/sync-subscribers.yml), lógica en [`scripts/`](scripts)
 - Historial de qué mails ya se mandaron: [`state/sent_log.json`](state/sent_log.json)
-- Detalles técnicos para quien quiera meter mano al código: [`README.md`](README.md)
+- Intro general (para quien no va a operar el bot, solo usarlo): [`README.md`](README.md)
+
+## 11. Limitaciones conocidas (v1)
+
+- El "techo de nubes" es una estimación (`125 × (temp − punto de rocío)`),
+  no un dato directo de Open-Meteo (que no lo expone de forma confiable).
+- Un mail por suscriptor por día: si el pronóstico mejora más tarde en el
+  día (después de ya haber mandado el mail), no se reenvía.
+- Coordenadas del aterrizaje de Grünten son aproximadas (`TBD` en
+  `sites.yaml`) — confirmar antes de confiar en ellas.
+- Agregar/sacar sitios sigue requiriendo editar `sites.yaml` a mano
+  (commit al repo); solo los suscriptores tienen alta automática.
