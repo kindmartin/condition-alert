@@ -47,6 +47,48 @@ criterio real de piloto antes de confiar en las alertas. También hay
 coordenadas marcadas `TBD` (Luján, Bariloche, aterrizaje de Grünten) que son
 aproximadas — confirmalas con tus propios pines antes de usarlas en serio.
 
+### Ejemplos de capas listas para copiar
+
+**Viento del NE, menos de 20 km/h, a 1000m sobre el nivel del mar:**
+
+```yaml
+- id: msl1000_NE
+  point: launch
+  kind: msl
+  meters: 1000
+  max_speed_kmh: 20
+  directions:
+    - { min_deg: 22, max_deg: 68 }   # NE
+```
+
+**Viento de superficie soplable para térmica/ladera, del SO, 10-25 km/h,
+ráfaga máxima 35:**
+
+```yaml
+- id: surface_soarable_SW
+  point: launch
+  kind: surface
+  min_speed_kmh: 10
+  max_speed_kmh: 25
+  max_gust_kmh: 35
+  directions:
+    - { min_deg: 210, max_deg: 260 }   # SO
+```
+
+**Corredor de viento en altura para travesía, 2500m MSL, del O, entre
+25 y 50 km/h:**
+
+```yaml
+- id: msl2500_corridor_W
+  point: launch
+  kind: msl
+  meters: 2500
+  min_speed_kmh: 25
+  max_speed_kmh: 50
+  directions:
+    - { min_deg: 260, max_deg: 300 }   # O
+```
+
 Para editar: entrás a
 [config/sites.yaml en GitHub](https://github.com/kindmartin/condition-alert/blob/main/config/sites.yaml),
 click en el lápiz (✏️) arriba a la derecha, editás, y "Commit changes"
