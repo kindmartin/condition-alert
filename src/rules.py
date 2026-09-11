@@ -24,7 +24,12 @@ def cloud_base_estimate_m(temperature_c, dew_point_c):
 
 def evaluate_layer(layer, site, points_hourly, hour_index):
     point_name = layer["point"]
-    hourly = points_hourly[point_name]
+    hourly = points_hourly.get(point_name)
+    if hourly is None:
+        # The site doesn't define this point (e.g. a "landing" layer on a
+        # site with no landing configured) — fail this layer instead of
+        # crashing the whole run for every other subscriber/site.
+        return {"passed": False, "speed_kmh": None, "direction_deg": None, "gust_kmh": None, "extrapolated": False}
 
     if layer["kind"] == "surface":
         speed = hourly["wind_speed_10m"][hour_index]

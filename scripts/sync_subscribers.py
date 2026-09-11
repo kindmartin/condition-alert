@@ -118,9 +118,11 @@ def parse_alert_name(value):
     return value
 
 
-def build_layer(row, cols):
+def build_layer(row, cols, available_points):
     kind = parse_kind(cell(row, cols["kind"]))
     point = parse_point(cell(row, cols["point"]))
+    if point not in available_points:
+        return None, f"punto {point!r} no existe en este sitio (tiene: {sorted(available_points)}), se descarta"
     layer = {"point": point, "kind": kind}
 
     if kind != "surface":
@@ -151,7 +153,9 @@ def build_layer(row, cols):
 def sync(dry_run=False):
     csv_url = os.environ["SHEET_CSV_URL"]
 
-    valid_site_ids = {s["id"] for s in yaml.safe_load(SITES_PATH.read_text(encoding="utf-8"))["sites"]}
+    site_configs = yaml.safe_load(SITES_PATH.read_text(encoding="utf-8"))["sites"]
+    valid_site_ids = {s["id"] for s in site_configs}
+    points_by_site = {s["id"]: set(s["points"]) for s in site_configs}
 
     rows = fetch_rows(csv_url)
     if not rows:
@@ -219,7 +223,7 @@ def sync(dry_run=False):
             print(f"[fila {row_num}] baja de {identity} en {site_id}" + (f" (alerta {alert_name!r})" if alert_name else ""))
             continue
 
-        layer, error = build_layer(row, cols)
+        layer, error = build_layer(row, cols, points_by_site[site_id])
         if error:
             print(f"[fila {row_num}] {error}")
             continue

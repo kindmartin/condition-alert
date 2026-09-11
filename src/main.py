@@ -101,7 +101,11 @@ def main():
                 print(f"[{site_id}] already sent to {label} for {today_str}, skipping")
                 continue
 
-            hourly_results = evaluate_layers(subscriber["layers"], site, points_hourly)
+            try:
+                hourly_results = evaluate_layers(subscriber["layers"], site, points_hourly)
+            except Exception as exc:  # noqa: BLE001 - one bad subscriber entry must not break everyone else's run
+                print(f"[{site_id}] ERROR evaluating {label}: {exc}", file=sys.stderr)
+                continue
             qualifying = [h for h in hourly_results if h["time"].startswith(today_str) and h["passed"]]
 
             if not qualifying:
