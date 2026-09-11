@@ -433,6 +433,7 @@ secret `GMAIL_APP_PASSWORD` — no se toca código.
 | Llega a spam | Marcar el primer mail como "No es spam" en Gmail suele bastar; al ser el mismo remitente todos los días debería dejar de pasar rápido. |
 | El workflow no corrió en la última hora | GitHub Actions en el plan gratuito puede demorar el disparo del cron unos minutos en horarios de mucha carga — es normal. |
 | `sync-subscribers` falla con error 401/403 | El `GH_PAT_FOR_SECRETS` venció, o no tiene permiso "Secrets: Read and write" sobre el repo. |
+| `Wind check` falla con `KeyError` de un nombre de punto (ej. `'landing'`) | Alguien eligió "Aterrizaje" en un sitio que solo tiene despegue configurado en `sites.yaml`. El sync ya descarta esas capas inválidas automáticamente (no debería volver a pasar), pero si ves esto en un secret cargado a mano, revisá que el `point` de cada capa exista en los `points` del sitio. |
 | Alguien no aparece después de completar el formulario | El sync corre solo 2 veces por día — puede tardar hasta 12hs. Para probar ya, corré el workflow manual (sección 7). |
 
 ## 10. Dónde está cada cosa (para referencia)
