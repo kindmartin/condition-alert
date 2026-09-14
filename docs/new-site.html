@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amigo del Viento — Proponer sitio</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #f4f6f5; --card: #fff; --text: #1c2b28; --muted: #5b6b67;
+    --accent: #1f8a5f; --accent-dark: #146b48; --border: #dde4e1; --danger: #b3413a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  header p { color: var(--muted); margin: 0; font-size: 0.9rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 1rem; margin: 0 0 12px; color: var(--accent-dark); }
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin: 12px 0 4px; }
+  label:first-of-type { margin-top: 0; }
+  input[type=text], input[type=email], input[type=number], textarea {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 1rem; background: #fff; color: var(--text); font-family: inherit;
+  }
+  .hint { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+  #map { height: 340px; border-radius: 10px; margin-top: 8px; border: 1px solid var(--border); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pin-status { font-size: 0.85rem; font-weight: 600; margin-top: 8px; }
+  .pin-status.set { color: var(--accent-dark); }
+  .pin-status.unset { color: var(--danger); }
+  .btn-secondary {
+    display: inline-block; margin-top: 8px; padding: 8px 14px; border-radius: 8px;
+    border: 1px solid var(--accent); background: #fff; color: var(--accent-dark);
+    font-weight: 600; font-size: 0.85rem; cursor: pointer;
+  }
+  .toggle { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; }
+  .toggle input { width: auto; }
+  .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--accent); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; }
+  .btn:disabled { background: #9fb3ae; cursor: not-allowed; }
+  #status { margin-top: 12px; font-size: 0.9rem; text-align: center; white-space: pre-wrap; }
+  #status.ok { color: var(--accent-dark); }
+  #status.err { color: var(--danger); }
+  [hidden] { display: none !important; }
+  footer { text-align: center; font-size: 0.78rem; color: var(--muted); margin-top: 24px; }
+  footer a { color: var(--accent-dark); }
+  .active-mode { outline: 3px solid #ffb703; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🗺️ Proponer un sitio de vuelo</h1>
+    <p>Se revisa antes de activarse — no queda visible al instante</p>
+  </header>
+
+  <form id="siteForm">
+    <div class="card">
+      <h2>Quién proponés</h2>
+      <label for="name">Tu nombre</label>
+      <input type="text" id="name" required placeholder="Tu nombre">
+      <label for="email">Tu email (por si hay que confirmar algo, opcional)</label>
+      <input type="email" id="email" placeholder="vos@ejemplo.com">
+    </div>
+
+    <div class="card">
+      <h2>El sitio</h2>
+      <label for="siteName">Nombre del sitio</label>
+      <input type="text" id="siteName" required placeholder="Ej: Cerro Tal (Provincia)">
+
+      <label>Marcá el despegue en el mapa (click satelital)</label>
+      <div id="map"></div>
+      <p class="hint">Click en el mapa para poner el pin. Podés buscar el lugar arrastrando/haciendo zoom — el mapa arranca centrado en Argentina.</p>
+      <p class="pin-status unset" id="launchStatus">Despegue: sin marcar todavía</p>
+
+      <label for="launchElev">Elevación del despegue (m)</label>
+      <div class="row2">
+        <input type="number" id="launchElev" placeholder="ej. 1050">
+        <button type="button" class="btn-secondary" id="launchElevBtn">Buscar automático</button>
+      </div>
+      <p class="hint">La búsqueda automática es una estimación (modelo de elevación satelital) — confirmá el valor real si lo sabés.</p>
+
+      <div class="toggle">
+        <input type="checkbox" id="hasLanding">
+        <label for="hasLanding" style="margin:0">Tiene aterrizaje conocido</label>
+      </div>
+
+      <div id="landingBlock" hidden>
+        <label>Marcá el aterrizaje (click "Activar pin de aterrizaje" y después click en el mapa)</label>
+        <button type="button" class="btn-secondary" id="landingModeBtn">Activar pin de aterrizaje</button>
+        <p class="pin-status unset" id="landingStatus">Aterrizaje: sin marcar todavía</p>
+
+        <label for="landingElev">Elevación del aterrizaje (m)</label>
+        <div class="row2">
+          <input type="number" id="landingElev" placeholder="ej. 780">
+          <button type="button" class="btn-secondary" id="landingElevBtn">Buscar automático</button>
+        </div>
+      </div>
+
+      <label for="comments">Comentarios (opcional)</label>
+      <textarea id="comments" rows="3" placeholder="Referencias, nombre del club, cómo se llega, etc."></textarea>
+    </div>
+
+    <button type="submit" class="btn" id="submitBtn">Proponer sitio</button>
+    <div id="status"></div>
+  </form>
+
+  <footer>
+    Esto va a una cola de revisión — el admin del proyecto confirma las coordenadas
+    antes de activarlo. Ver <a href="https://github.com/kindmartin/condition-alert" target="_blank">github.com/kindmartin/condition-alert</a>.
+    ¿Ya sabés qué alerta querés? <a href="./">Volvé al alta de alertas</a>.
+  </footer>
+</div>
+
+<script>
+// Fill after deploying/reusing the Apps Script (see docs/apps_script.gs / MANUAL.md).
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxarAZ2miZJD1R0-Jxzfj3vgePfMPpR_maytghbA06Y-puh-lb1puN5_cC7b09HCnT2/exec";
+
+let map, launchMarker, landingMarker;
+let launchLatLng = null, landingLatLng = null;
+let pinMode = "launch"; // "launch" | "landing"
+
+function initMap() {
+  map = L.map("map", { scrollWheelZoom: false }).setView([-38.4, -63.6], 4); // Argentina-ish default
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 19,
+    attribution: "Tiles &copy; Esri",
+  }).addTo(map);
+
+  map.on("click", (e) => {
+    if (pinMode === "launch") {
+      launchLatLng = e.latlng;
+      if (launchMarker) launchMarker.remove();
+      launchMarker = L.marker(launchLatLng, { title: "Despegue" }).addTo(map);
+      document.getElementById("launchStatus").textContent =
+        `Despegue: ${launchLatLng.lat.toFixed(5)}, ${launchLatLng.lng.toFixed(5)}`;
+      document.getElementById("launchStatus").className = "pin-status set";
+    } else {
+      landingLatLng = e.latlng;
+      if (landingMarker) landingMarker.remove();
+      landingMarker = L.marker(landingLatLng, { title: "Aterrizaje", opacity: 0.75 }).addTo(map);
+      document.getElementById("landingStatus").textContent =
+        `Aterrizaje: ${landingLatLng.lat.toFixed(5)}, ${landingLatLng.lng.toFixed(5)}`;
+      document.getElementById("landingStatus").className = "pin-status set";
+    }
+  });
+}
+
+document.getElementById("hasLanding").addEventListener("change", (evt) => {
+  document.getElementById("landingBlock").hidden = !evt.target.checked;
+  pinMode = "launch";
+});
+
+document.getElementById("landingModeBtn").addEventListener("click", () => {
+  pinMode = "landing";
+  document.getElementById("map").classList.add("active-mode");
+  setTimeout(() => document.getElementById("map").classList.remove("active-mode"), 1500);
+});
+
+async function fetchElevation(latlng) {
+  const resp = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${latlng.lat},${latlng.lng}`);
+  const data = await resp.json();
+  return Math.round(data.results[0].elevation);
+}
+
+document.getElementById("launchElevBtn").addEventListener("click", async () => {
+  if (!launchLatLng) { alert("Primero marcá el despegue en el mapa."); return; }
+  document.getElementById("launchElevBtn").textContent = "Buscando...";
+  try {
+    document.getElementById("launchElev").value = await fetchElevation(launchLatLng);
+  } catch (e) {
+    alert("No se pudo buscar automático, cargalo a mano.");
+  }
+  document.getElementById("launchElevBtn").textContent = "Buscar automático";
+});
+
+document.getElementById("landingElevBtn").addEventListener("click", async () => {
+  if (!landingLatLng) { alert("Primero marcá el aterrizaje en el mapa."); return; }
+  document.getElementById("landingElevBtn").textContent = "Buscando...";
+  try {
+    document.getElementById("landingElev").value = await fetchElevation(landingLatLng);
+  } catch (e) {
+    alert("No se pudo buscar automático, cargalo a mano.");
+  }
+  document.getElementById("landingElevBtn").textContent = "Buscar automático";
+});
+
+document.getElementById("siteForm").addEventListener("submit", async (evt) => {
+  evt.preventDefault();
+  const status = document.getElementById("status");
+  const btn = document.getElementById("submitBtn");
+  status.className = "";
+  status.textContent = "";
+
+  if (!launchLatLng) {
+    status.className = "err";
+    status.textContent = "Falta marcar el despegue en el mapa.";
+    return;
+  }
+  const hasLanding = document.getElementById("hasLanding").checked;
+  if (hasLanding && !landingLatLng) {
+    status.className = "err";
+    status.textContent = "Tildaste 'tiene aterrizaje' pero no marcaste el pin — desmarcá o marcalo.";
+    return;
+  }
+
+  const payload = {
+    _kind: "site_proposal",
+    nombre: document.getElementById("name").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    nombreSitio: document.getElementById("siteName").value.trim(),
+    despegueLat: launchLatLng.lat,
+    despegueLon: launchLatLng.lng,
+    despegueElev: document.getElementById("launchElev").value,
+    tieneAterrizaje: hasLanding ? "Si" : "No",
+    aterrizajeLat: hasLanding ? landingLatLng.lat : "",
+    aterrizajeLon: hasLanding ? landingLatLng.lng : "",
+    aterrizajeElev: hasLanding ? document.getElementById("landingElev").value : "",
+    comentarios: document.getElementById("comments").value.trim(),
+  };
+
+  btn.disabled = true;
+  status.textContent = "Enviando...";
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      status.className = "ok";
+      status.textContent = "¡Gracias! Lo vamos a revisar antes de activarlo.";
+    } else {
+      throw new Error(data.error || "Error desconocido");
+    }
+  } catch (err) {
+    status.className = "err";
+    status.textContent = "No se pudo enviar: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+initMap();
+</script>
+</body>
+</html>

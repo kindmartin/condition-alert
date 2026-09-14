@@ -195,6 +195,7 @@
 
   <footer>
     Los datos van a una planilla que sincroniza el bot cada rato — no hace falta cuenta de GitHub.
+    ¿Tu sitio no está en la lista? <a href="new-site.html">Proponelo acá</a>.
     Ver el proyecto en <a href="https://github.com/kindmartin/condition-alert" target="_blank">github.com/kindmartin/condition-alert</a>.
   </footer>
 </div>
@@ -258,7 +259,7 @@ function refreshPointOptions() {
 let map, marker, coneLayer;
 
 function initMap() {
-  map = L.map("map", { zoomControl: true, attributionControl: false });
+  map = L.map("map", { zoomControl: true, attributionControl: false, scrollWheelZoom: false });
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
     maxZoom: 19,
     attribution: "Tiles &copy; Esri",
