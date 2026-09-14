@@ -124,10 +124,18 @@ let pinMode = "launch"; // "launch" | "landing"
 
 function initMap() {
   map = L.map("map", { scrollWheelZoom: false }).setView([-38.4, -63.6], 4); // Argentina-ish default
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+
+  const satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
     maxZoom: 19,
     attribution: "Tiles &copy; Esri",
   }).addTo(map);
+  const streets = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap contributors",
+  });
+  // Streets view makes it much easier to spot roads/towns as reference
+  // points before switching back to satellite to place the actual pin.
+  L.control.layers({ "Satelital": satellite, "Calles": streets }, null, { position: "topright" }).addTo(map);
 
   map.on("click", (e) => {
     // .wrap() normalizes lng back into [-180, 180] — without it, panning the

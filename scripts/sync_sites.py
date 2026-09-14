@@ -58,6 +58,39 @@ def valid_latlon(lat, lon):
     return -90 <= lat <= 90 and -180 <= lon <= 180
 
 
+ELEVATION_MISMATCH_THRESHOLD_M = 400
+ELEVATION_API_URL = "https://api.open-elevation.com/api/v1/lookup"
+
+
+def real_elevation_m(lat, lon):
+    """Best-effort real terrain elevation for a point, or None if the free API
+    is unreachable/rate-limited — never blocks the sync on this."""
+    try:
+        resp = requests.get(ELEVATION_API_URL, params={"locations": f"{lat},{lon}"}, timeout=15)
+        resp.raise_for_status()
+        return resp.json()["results"][0]["elevation"]
+    except (requests.RequestException, KeyError, IndexError, ValueError):
+        return None
+
+
+def check_elevation_sanity(row_num, label, lat, lon, claimed_elev):
+    """A claimed elevation wildly different from real terrain elevation is a
+    strong signal the pin landed in the wrong place (ocean, wrong city, typo
+    in the coordinates) — this only warns (it doesn't reject the site), since
+    legitimately steep terrain or API noise could also cause a mismatch."""
+    real_elev = real_elevation_m(lat, lon)
+    if real_elev is None:
+        return
+    diff = abs(real_elev - claimed_elev)
+    if diff > ELEVATION_MISMATCH_THRESHOLD_M:
+        print(
+            f"[fila {row_num}] AVISO: elevación cargada de {label} ({claimed_elev}m) difiere "
+            f"{diff:.0f}m de la elevación real del terreno en esas coordenadas (~{real_elev:.0f}m) "
+            f"— revisar si el pin está en el lugar correcto",
+            file=sys.stderr,
+        )
+
+
 def sync(dry_run=False):
     csv_url = os.environ["SITES_SHEET_CSV_URL"]
 
@@ -112,6 +145,7 @@ def sync(dry_run=False):
         if not valid_latlon(despegue_lat, despegue_lon):
             print(f"[fila {row_num}] coordenadas de despegue fuera de rango ({despegue_lat}, {despegue_lon}) para {name!r}, se descarta")
             continue
+        check_elevation_sanity(row_num, "despegue", despegue_lat, despegue_lon, despegue_elev)
 
         site_id = cell(row, cols["site_id"])
         if not site_id:
@@ -150,6 +184,7 @@ def sync(dry_run=False):
                 print(f"[fila {row_num}] coordenadas de aterrizaje fuera de rango ({landing_lat}, {landing_lon}) para site_id {site_id!r}, se omite el punto landing")
             else:
                 points["landing"] = {"lat": landing_lat, "lon": landing_lon, "elevation_m": landing_elev}
+                check_elevation_sanity(row_num, "aterrizaje", landing_lat, landing_lon, landing_elev)
 
         modelo_raw = normalize(cell(row, cols["modelo"])) if cols["modelo"] is not None else ""
         model = modelo_raw if modelo_raw in ALLOWED_MODELS else DEFAULT_MODEL
