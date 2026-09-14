@@ -25,10 +25,34 @@ const PROPOSALS_HEADERS = [
   "Despegue lat", "Despegue lon", "Despegue elev (m)",
   "Tiene aterrizaje", "Aterrizaje lat", "Aterrizaje lon", "Aterrizaje elev (m)",
   "Comentarios",
-  "Estado",     // Pendiente / Aprobado / Rechazado — el admin lo cambia a mano
-  "Site ID",    // slug único (ej. "cerro_tal") — lo completa el admin al aprobar
-  "Timezone",   // IANA (ej. "America/Argentina/Cordoba") — lo completa el admin al aprobar
+  "Estado",     // Pendiente / Aprobado / Rechazado — dropdown, el admin lo cambia a mano
+  "Site ID",    // opcional: slug único (ej. "cerro_tal"); si se deja vacío, sync_sites.py lo autogenera del nombre
+  "Timezone",   // opcional: IANA (ej. "America/Argentina/Cordoba"); si se deja vacío, sync_sites.py lo calcula de las coordenadas
 ];
+
+const ESTADO_OPTIONS = ["Pendiente", "Aprobado", "Rechazado"];
+
+function applyEstadoDropdown(sheet) {
+  const estadoColIdx = PROPOSALS_HEADERS.indexOf("Estado") + 1;
+  const rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(ESTADO_OPTIONS, true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, estadoColIdx, 1000, 1).setDataValidation(rule);
+}
+
+/**
+ * Run this ONCE, manually, if "Sitios propuestos" already existed before
+ * this dropdown was added (new sheets get it automatically). Safe to
+ * re-run.
+ */
+function setupEstadoDropdown() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PROPOSALS_SHEET_NAME);
+  if (!sheet) {
+    throw new Error(`No existe la pestaña "${PROPOSALS_SHEET_NAME}" todavía — proponé un sitio primero o corré seedExistingSites().`);
+  }
+  applyEstadoDropdown(sheet);
+}
 
 function doPost(e) {
   try {
@@ -86,6 +110,7 @@ function handleSiteProposal(payload) {
   if (!sheet) {
     sheet = ss.insertSheet(PROPOSALS_SHEET_NAME);
     sheet.appendRow(PROPOSALS_HEADERS);
+    applyEstadoDropdown(sheet);
   }
   sheet.appendRow([
     new Date(),
@@ -140,6 +165,7 @@ function seedExistingSites() {
     sheet = ss.insertSheet(PROPOSALS_SHEET_NAME);
     sheet.appendRow(PROPOSALS_HEADERS);
   }
+  applyEstadoDropdown(sheet);
 
   const idColIdx = PROPOSALS_HEADERS.indexOf("Site ID");
   const existingIds = sheet.getLastRow() > 1

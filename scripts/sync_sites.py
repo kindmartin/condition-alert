@@ -4,7 +4,14 @@ The sheet is the single source of truth for sites now — nothing is
 hardcoded in code or in a committed YAML file anymore. Every row with
 Estado="Aprobado" becomes one site; rows are processed in sheet order so a
 later approved row for the same Site ID replaces an earlier one (e.g. if
-the admin corrects a coordinate and re-approves).
+the admin corrects a coordinate and re-approves). To edit an already-
+approved site, the admin just edits that same row in place — there's no
+separate "site list" to keep in sync, this sheet IS the list.
+
+Site ID and Timezone are optional in the sheet: if left blank, Site ID is
+slugified from the site name and Timezone is looked up from the despegue
+coordinates (via timezonefinder, fully offline). Filling them in by hand
+still works, as a manual override.
 
 The 9 sites that existed before this sheet became the source of truth were
 one-time seeded into the sheet via the seedExistingSites() function in
@@ -13,7 +20,9 @@ docs/apps_script.gs — see MANUAL.md.
 import argparse
 import json
 import os
+import re
 import sys
+import unicodedata
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -21,11 +30,22 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from sheet_columns import cell, find_col, normalize, parse_float
 from sheets import fetch_rows
+from timezonefinder import TimezoneFinder
 
 ROOT = Path(__file__).resolve().parent.parent
 SITES_PATH = ROOT / "docs" / "sites.json"
 
 APPROVED_KEYWORDS = ("aprobado", "approved")
+
+
+def slugify(text):
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    text = re.sub(r"[^a-zA-Z0-9]+", "_", text).strip("_").lower()
+    return text or "sitio"
+
+
+def valid_latlon(lat, lon):
+    return -90 <= lat <= 90 and -180 <= lon <= 180
 
 
 def sync(dry_run=False):
@@ -55,33 +75,49 @@ def sync(dry_run=False):
         print(f"ERROR: no encontré columnas para {missing} en el encabezado {rows[0]}", file=sys.stderr)
         sys.exit(1)
 
+    tf = TimezoneFinder()
     sites_by_id = {}  # last approved row per site_id wins (sheet order)
+    used_slugs = {}  # auto-generated slug -> site name that claimed it (collision detection)
 
     for row_num, row in enumerate(rows[1:], start=2):
         estado = normalize(cell(row, cols["estado"]))
         if not any(keyword in estado for keyword in APPROVED_KEYWORDS):
             continue
 
-        site_id = cell(row, cols["site_id"])
-        if not site_id:
-            print(f"[fila {row_num}] Aprobado pero sin 'Site ID', se descarta")
-            continue
-
-        timezone = cell(row, cols["timezone"])
-        try:
-            ZoneInfo(timezone)
-        except (ZoneInfoNotFoundError, ValueError):
-            print(f"[fila {row_num}] timezone {timezone!r} inválido para site_id {site_id!r}, se descarta")
-            continue
+        name = cell(row, cols["name"])
 
         despegue_lat = parse_float(cell(row, cols["despegue_lat"]))
         despegue_lon = parse_float(cell(row, cols["despegue_lon"]))
         despegue_elev = parse_float(cell(row, cols["despegue_elev"]))
         if None in (despegue_lat, despegue_lon, despegue_elev):
-            print(f"[fila {row_num}] faltan datos de despegue para site_id {site_id!r}, se descarta")
+            print(f"[fila {row_num}] faltan datos de despegue para {name!r}, se descarta")
             continue
-        if not (-90 <= despegue_lat <= 90 and -180 <= despegue_lon <= 180):
-            print(f"[fila {row_num}] coordenadas de despegue fuera de rango ({despegue_lat}, {despegue_lon}) para site_id {site_id!r}, se descarta")
+        if not valid_latlon(despegue_lat, despegue_lon):
+            print(f"[fila {row_num}] coordenadas de despegue fuera de rango ({despegue_lat}, {despegue_lon}) para {name!r}, se descarta")
+            continue
+
+        site_id = cell(row, cols["site_id"])
+        if not site_id:
+            base_slug = slugify(name or f"sitio_fila_{row_num}")
+            site_id = base_slug
+            suffix = 2
+            while site_id in used_slugs and used_slugs[site_id] != name:
+                site_id = f"{base_slug}_{suffix}"
+                suffix += 1
+            used_slugs[site_id] = name
+
+        timezone_override = cell(row, cols["timezone"])
+        timezone = None
+        if timezone_override:
+            try:
+                ZoneInfo(timezone_override)
+                timezone = timezone_override
+            except (ZoneInfoNotFoundError, ValueError):
+                print(f"[fila {row_num}] timezone {timezone_override!r} inválido para site_id {site_id!r}, se calcula desde coordenadas")
+        if timezone is None:
+            timezone = tf.timezone_at(lat=despegue_lat, lng=despegue_lon)
+        if timezone is None:
+            print(f"[fila {row_num}] no se pudo determinar timezone para site_id {site_id!r}, se descarta")
             continue
 
         points = {"launch": {"lat": despegue_lat, "lon": despegue_lon, "elevation_m": despegue_elev}}
@@ -93,14 +129,14 @@ def sync(dry_run=False):
             landing_elev = parse_float(cell(row, cols["aterrizaje_elev"]))
             if None in (landing_lat, landing_lon, landing_elev):
                 print(f"[fila {row_num}] 'Tiene aterrizaje' pero faltan sus coordenadas, se omite el punto landing")
-            elif not (-90 <= landing_lat <= 90 and -180 <= landing_lon <= 180):
+            elif not valid_latlon(landing_lat, landing_lon):
                 print(f"[fila {row_num}] coordenadas de aterrizaje fuera de rango ({landing_lat}, {landing_lon}) para site_id {site_id!r}, se omite el punto landing")
             else:
                 points["landing"] = {"lat": landing_lat, "lon": landing_lon, "elevation_m": landing_elev}
 
         sites_by_id[site_id] = {
             "id": site_id,
-            "name": cell(row, cols["name"]) or site_id,
+            "name": name or site_id,
             "timezone": timezone,
             "points": points,
         }
