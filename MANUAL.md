@@ -11,21 +11,25 @@ Cada hora, en un servidor de GitHub (no en tu compu):
 
 1. **Busca el pronóstico** de todos los sitios configurados en un solo
    pedido a Open-Meteo — viento en superficie, en distintos niveles de
-   altura, y nubosidad.
+   altura, y nubosidad, para los próximos **3 días** (ventana móvil: como
+   corre cada hora, esos 3 días siempre están "desde ahora" en adelante).
 2. **Calcula el viento a las alturas que interesan** (ej. "1000m arriba
    del despegue") interpolando entre los niveles que da la API.
 3. Para **cada alerta** de cada suscriptor de cada sitio, chequea hora por
-   hora del día de hoy si TODAS las capas de ESA alerta se cumplen a la vez
+   hora de esos 3 días si TODAS las capas de ESA alerta se cumplen a la vez
    (viento mínimo/máximo, dirección, ráfaga máxima). Una persona puede
    tener varias alertas independientes en el mismo sitio (sección 2) — se
    evalúan por separado, no hace falta que todas se cumplan juntas.
-4. Si encuentra al menos una hora que cumple, y todavía no le mandó aviso
-   por ESA alerta hoy, **le manda un mail/Telegram** con el listado
-   completo de horas que califican y los valores reales.
-5. Guarda en el repo a quién (y a qué alerta puntual) ya le mandó, para no
-   repetir el mismo aviso 24 veces por hora mientras dure la ventana buena.
-
-Al otro día (hora local del sitio), el conteo arranca de nuevo, por alerta.
+4. Cada alerta tiene un estado **prendida/apagada** (guardado en el repo).
+   Solo manda aviso cuando ese estado **cambia**:
+   - Estaba apagada y aparece al menos una hora que cumple → la prende y
+     manda el mail/Telegram con el listado completo de horas que califican.
+   - Estaba prendida y ya no queda ninguna hora que cumpla en los próximos
+     3 días → la apaga y manda un aviso de "la condición ya no está
+     disponible".
+   - Si no cambió nada (sigue prendida o sigue apagada), no manda nada —
+     así no repite el mismo aviso cada hora mientras dure la ventana buena,
+     pero SÍ te entera cuando una ventana que ya tenías confirmada se cae.
 
 ## 2. Dos lugares de configuración distintos
 
@@ -232,15 +236,18 @@ ráfaga máxima 35:**
 
 ## 3. Cómo se ve el mail
 
-Un mail por suscriptor, por día, así:
+Hay dos tipos de aviso — mirá la sección 1 para cuándo se manda cada uno.
+
+**Cuando una alerta se prende** (aparece una ventana que antes no estaba):
 
 ```
-Subject: Amigo del Viento — Grünten (Allgäu, DE): 3 hora(s) volable(s) el 2026-09-14
+Subject: Amigo del Viento — Grünten (Allgäu, DE): 5 hora(s) volable(s) en los próximos días
 
 Hola Juan,
 
-Ventanas de vuelo en Grünten (Allgäu, DE) — 2026-09-14 (Europe/Berlin):
+Ventanas de vuelo en Grünten (Allgäu, DE) (Europe/Berlin):
 
+== 2026-09-14 ==
 14:00
   Superficie@launch: 18 km/h desde 215°
   +1000m AGL@launch (~2050m ASL): 22 km/h desde 230°
@@ -250,7 +257,28 @@ Ventanas de vuelo en Grünten (Allgäu, DE) — 2026-09-14 (Europe/Berlin):
 15:00
   ...
 
+== 2026-09-15 ==
+11:00
+  ...
+
 Pronóstico automático de Open-Meteo — verificá siempre las condiciones en el lugar antes de volar.
+Te vamos a avisar de nuevo si esta condición deja de cumplirse y después vuelve a darse.
+— Amigo del Viento 🪂
+```
+
+Como la ventana puede caer en distintos días (mira hasta 3 días adelante),
+cada bloque de fecha (`== YYYY-MM-DD ==`) agrupa las horas de ese día.
+
+**Cuando una alerta se apaga** (la ventana que tenías confirmada desapareció):
+
+```
+Subject: Amigo del Viento — Grünten (Allgäu, DE): la condición ya no está disponible
+
+Hola Juan,
+
+La condición de tu alerta en Grünten (Allgäu, DE) ya no se cumple en el pronóstico de los próximos días.
+Te avisamos de nuevo apenas vuelva a darse.
+
 — Amigo del Viento 🪂
 ```
 
@@ -290,8 +318,8 @@ algo como:
 
 ```
 [gruenten] no subscribers, skipping
-[piltriquitron] no qualifying hours for juan@example.com on 2026-09-14
-[piltriquitron] WOULD SEND to maria@example.com:
+[piltriquitron] juan@example.com#Alerta 1: sin cambio (on=False)
+[piltriquitron] WOULD SEND (ALERT ON) to maria@example.com#Alerta 1:
 Subject: Amigo del Viento — Piltriquitrón...
 ```
 
@@ -306,12 +334,17 @@ Subject: Amigo del Viento — Piltriquitrón...
 
 ## 5. Cómo funciona la frecuencia (para que no spamee)
 
-- El workflow corre **cada hora**, automáticamente.
-- Por cada suscriptor de cada sitio, mira si hoy (en el huso horario local
-  del sitio) ya le mandó mail. Si ya le mandó, no vuelve a mandar aunque
-  la condición se siga cumpliendo.
-- Si el pronóstico mejora *después* de que ya le llegó el mail del día, no
-  le llega un segundo mail actualizado — limitación conocida de esta v1.
+- El workflow corre **cada hora**, automáticamente, y mira una ventana
+  móvil de **3 días hacia adelante** (no solo "hoy").
+- Cada alerta tiene un estado prendida/apagada guardado en
+  `state/sent_log.json`. Solo se manda aviso cuando ese estado **cambia**
+  (ver sección 1) — mientras siga prendida (la ventana se mantiene) o
+  siga apagada (nada calificó), no manda nada nuevo.
+- Si la ventana que ya tenías confirmada desaparece del pronóstico (el
+  clima cambió), te llega un aviso de "condición ya no disponible" — no
+  te quedás pensando que todavía va a andar.
+- Si después de apagarse vuelve a aparecer una ventana (mismo día u otro,
+  dentro de los 3 que mira), se prende de nuevo y te llega un aviso nuevo.
 
 ## 6. Agregar cosas nuevas
 
@@ -456,8 +489,10 @@ secret `GMAIL_APP_PASSWORD` — no se toca código.
 
 - El "techo de nubes" es una estimación (`125 × (temp − punto de rocío)`),
   no un dato directo de Open-Meteo (que no lo expone de forma confiable).
-- Un mail por suscriptor por día: si el pronóstico mejora más tarde en el
-  día (después de ya haber mandado el mail), no se reenvía.
+- Si la ventana se achica o se agranda pero sigue habiendo al menos una
+  hora que califica, no se manda un mail actualizado con el detalle nuevo
+  — solo se avisa en las transiciones prendida/apagada (sección 5), no en
+  cada cambio de horario dentro de una ventana que sigue activa.
 - Coordenadas del aterrizaje de Grünten son aproximadas (`TBD` en
   `sites.yaml`) — confirmar antes de confiar en ellas.
 - Agregar/sacar sitios sigue requiriendo editar `sites.yaml` a mano
