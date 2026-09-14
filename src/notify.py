@@ -47,7 +47,7 @@ def format_cloud_line(cloud):
     return line
 
 
-def build_email_body(site, date_str, qualifying_hours, layers, subscriber_name=None, alert_name=None):
+def build_email_body(site, qualifying_hours, layers, subscriber_name=None, alert_name=None):
     lines = []
     if subscriber_name:
         lines.append(f"Hola {subscriber_name},")
@@ -55,11 +55,16 @@ def build_email_body(site, date_str, qualifying_hours, layers, subscriber_name=N
     heading = f"Ventanas de vuelo en {site['name']}"
     if alert_name:
         heading += f" — {alert_name}"
-    heading += f" — {date_str} ({site.get('timezone', '')}):"
+    heading += f" ({site.get('timezone', '')}):"
     lines.append(heading)
     lines.append("")
+
+    current_date = None
     for hour in qualifying_hours:
-        hhmm = hour["time"].split("T")[1]
+        hour_date, hhmm = hour["time"].split("T")
+        if hour_date != current_date:
+            lines.append(f"== {hour_date} ==")
+            current_date = hour_date
         lines.append(hhmm)
         for layer in layers:
             result = hour["layers"][layer["id"]]
@@ -70,13 +75,32 @@ def build_email_body(site, date_str, qualifying_hours, layers, subscriber_name=N
         lines.append("")
 
     lines.append("Pronóstico automático de Open-Meteo — verificá siempre las condiciones en el lugar antes de volar.")
+    lines.append("Te vamos a avisar de nuevo si esta condición deja de cumplirse y después vuelve a darse.")
     lines.append("— Amigo del Viento 🪂")
     return "\n".join(lines)
 
 
-def subject_line(site, date_str, n_hours, alert_name=None):
+def subject_line(site, n_hours, alert_name=None):
     place = f"{site['name']} ({alert_name})" if alert_name else site["name"]
-    return f"Amigo del Viento — {place}: {n_hours} hora(s) volable(s) el {date_str}"
+    return f"Amigo del Viento — {place}: {n_hours} hora(s) volable(s) en los próximos días"
+
+
+def build_cleared_body(site, subscriber_name=None, alert_name=None):
+    lines = []
+    if subscriber_name:
+        lines.append(f"Hola {subscriber_name},")
+        lines.append("")
+    place = f"{site['name']}" + (f" — {alert_name}" if alert_name else "")
+    lines.append(f"La condición de tu alerta en {place} ya no se cumple en el pronóstico de los próximos días.")
+    lines.append("Te avisamos de nuevo apenas vuelva a darse.")
+    lines.append("")
+    lines.append("— Amigo del Viento 🪂")
+    return "\n".join(lines)
+
+
+def cleared_subject_line(site, alert_name=None):
+    place = f"{site['name']} ({alert_name})" if alert_name else site["name"]
+    return f"Amigo del Viento — {place}: la condición ya no está disponible"
 
 
 def send_email(subject, body, smtp_user, smtp_password, to_addr, smtp_host="smtp.gmail.com", smtp_port=587):
