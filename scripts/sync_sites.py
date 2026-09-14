@@ -80,6 +80,9 @@ def sync(dry_run=False):
         if None in (despegue_lat, despegue_lon, despegue_elev):
             print(f"[fila {row_num}] faltan datos de despegue para site_id {site_id!r}, se descarta")
             continue
+        if not (-90 <= despegue_lat <= 90 and -180 <= despegue_lon <= 180):
+            print(f"[fila {row_num}] coordenadas de despegue fuera de rango ({despegue_lat}, {despegue_lon}) para site_id {site_id!r}, se descarta")
+            continue
 
         points = {"launch": {"lat": despegue_lat, "lon": despegue_lon, "elevation_m": despegue_elev}}
 
@@ -88,10 +91,12 @@ def sync(dry_run=False):
             landing_lat = parse_float(cell(row, cols["aterrizaje_lat"]))
             landing_lon = parse_float(cell(row, cols["aterrizaje_lon"]))
             landing_elev = parse_float(cell(row, cols["aterrizaje_elev"]))
-            if None not in (landing_lat, landing_lon, landing_elev):
-                points["landing"] = {"lat": landing_lat, "lon": landing_lon, "elevation_m": landing_elev}
-            else:
+            if None in (landing_lat, landing_lon, landing_elev):
                 print(f"[fila {row_num}] 'Tiene aterrizaje' pero faltan sus coordenadas, se omite el punto landing")
+            elif not (-90 <= landing_lat <= 90 and -180 <= landing_lon <= 180):
+                print(f"[fila {row_num}] coordenadas de aterrizaje fuera de rango ({landing_lat}, {landing_lon}) para site_id {site_id!r}, se omite el punto landing")
+            else:
+                points["landing"] = {"lat": landing_lat, "lon": landing_lon, "elevation_m": landing_elev}
 
         sites_by_id[site_id] = {
             "id": site_id,

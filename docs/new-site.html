@@ -88,8 +88,8 @@
       </div>
 
       <div id="landingBlock" hidden>
-        <label>Marcá el aterrizaje (click "Activar pin de aterrizaje" y después click en el mapa)</label>
-        <button type="button" class="btn-secondary" id="landingModeBtn">Activar pin de aterrizaje</button>
+        <label>Marcá el aterrizaje: click en el mapa de arriba (ahora en modo aterrizaje)</label>
+        <button type="button" class="btn-secondary" id="landingModeBtn">Volver a marcar el despegue</button>
         <p class="pin-status unset" id="landingStatus">Aterrizaje: sin marcar todavía</p>
 
         <label for="landingElev">Elevación del aterrizaje (m)</label>
@@ -154,11 +154,17 @@ function initMap() {
 
 document.getElementById("hasLanding").addEventListener("change", (evt) => {
   document.getElementById("landingBlock").hidden = !evt.target.checked;
-  pinMode = "launch";
+  pinMode = evt.target.checked ? "landing" : "launch";
+  if (evt.target.checked) {
+    document.getElementById("map").classList.add("active-mode");
+    setTimeout(() => document.getElementById("map").classList.remove("active-mode"), 1500);
+  }
 });
 
 document.getElementById("landingModeBtn").addEventListener("click", () => {
-  pinMode = "landing";
+  pinMode = pinMode === "landing" ? "launch" : "landing";
+  document.getElementById("landingModeBtn").textContent =
+    pinMode === "landing" ? "Volver a marcar el despegue" : "Volver a marcar el aterrizaje";
   document.getElementById("map").classList.add("active-mode");
   setTimeout(() => document.getElementById("map").classList.remove("active-mode"), 1500);
 });
