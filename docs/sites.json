@@ -1,14 +1,5 @@
 [
   {
-    "id": "gruenten",
-    "name": "Grünten (Allgäu, DE)",
-    "timezone": "Europe/Berlin",
-    "points": {
-      "launch": { "lat": 47.553, "lon": 10.317, "elevation_m": 1050 },
-      "landing": { "lat": 47.568, "lon": 10.335, "elevation_m": 780 }
-    }
-  },
-  {
     "id": "lujan",
     "name": "Luján (Buenos Aires, AR)",
     "timezone": "America/Argentina/Buenos_Aires",

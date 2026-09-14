@@ -1,6 +1,6 @@
 {
   "_comment": "Plantilla del secret SUBSCRIBERS_JSON. No se usa en runtime, es solo referencia — la lista REAL de suscriptores vive en el secret del repo, nunca en un archivo commiteado (son emails personales). Ver MANUAL.md seccion Suscriptores.",
-  "gruenten": [
+  "cerro_otto": [
     {
       "name": "Nombre Apellido",
       "email": "piloto@example.com",

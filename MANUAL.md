@@ -42,12 +42,11 @@ emails ni condiciones de nadie.
 
 ```json
 {
-  "id": "gruenten",
-  "name": "Grünten (Allgäu, DE)",
-  "timezone": "Europe/Berlin",
+  "id": "cerro_otto",
+  "name": "Cerro Otto (Bariloche, AR)",
+  "timezone": "America/Argentina/Salta",
   "points": {
-    "launch":  { "lat": 47.553, "lon": 10.317, "elevation_m": 1050 },
-    "landing": { "lat": 47.568, "lon": 10.335, "elevation_m": 780 }
+    "launch": { "lat": -41.14408, "lon": -71.37665, "elevation_m": 1380 }
   }
 }
 ```
@@ -70,7 +69,7 @@ que es solo de referencia con datos falsos, no se usa en runtime):
 
 ```json
 {
-  "gruenten": [
+  "cerro_otto": [
     {
       "name": "Juan Pérez",
       "email": "juan@example.com",
@@ -92,7 +91,7 @@ que es solo de referencia con datos falsos, no se usa en runtime):
 }
 ```
 
-La clave de primer nivel (`"gruenten"`) tiene que ser el mismo `id` que el
+La clave de primer nivel (`"cerro_otto"`) tiene que ser el mismo `id` que el
 sitio en `docs/sites.json`. Cada entrada de la lista es **una alerta** (no
 necesariamente una persona distinta): todas sus capas deben cumplirse a la
 vez (Y) para que le llegue el aviso de esa alerta puntual.
@@ -244,11 +243,11 @@ Hay dos tipos de aviso — mirá la sección 1 para cuándo se manda cada uno.
 **Cuando una alerta se prende** (aparece una ventana que antes no estaba):
 
 ```
-Subject: Amigo del Viento — Grünten (Allgäu, DE): 5 hora(s) volable(s) en los próximos días
+Subject: Amigo del Viento — Cerro Otto (Bariloche, AR): 5 hora(s) volable(s) en los próximos días
 
 Hola Juan,
 
-Ventanas de vuelo en Grünten (Allgäu, DE) (Europe/Berlin):
+Ventanas de vuelo en Cerro Otto (Bariloche, AR) (America/Argentina/Salta):
 
 == 2026-09-14 ==
 14:00
@@ -275,11 +274,11 @@ cada bloque de fecha (`== YYYY-MM-DD ==`) agrupa las horas de ese día.
 **Cuando una alerta se apaga** (la ventana que tenías confirmada desapareció):
 
 ```
-Subject: Amigo del Viento — Grünten (Allgäu, DE): la condición ya no está disponible
+Subject: Amigo del Viento — Cerro Otto (Bariloche, AR): la condición ya no está disponible
 
 Hola Juan,
 
-La condición de tu alerta en Grünten (Allgäu, DE) ya no se cumple en el pronóstico de los próximos días.
+La condición de tu alerta en Cerro Otto (Bariloche, AR) ya no se cumple en el pronóstico de los próximos días.
 Te avisamos de nuevo apenas vuelva a darse.
 
 — Amigo del Viento 🪂
@@ -293,7 +292,7 @@ Solo muestra las capas que ESE suscriptor configuró (no las de todos).
 
 ```bash
 pip install -r requirements.txt
-export SUBSCRIBERS_JSON='{"gruenten": [...]}'   # el JSON real o uno de prueba
+export SUBSCRIBERS_JSON='{"cerro_otto": [...]}'   # el JSON real o uno de prueba
 python src/main.py --dry-run
 ```
 
@@ -320,7 +319,7 @@ ni guarda estado** — solo imprime en el log qué habría hecho. Vas a ver
 algo como:
 
 ```
-[gruenten] no subscribers, skipping
+[cerro_otto] no subscribers, skipping
 [piltriquitron] juan@example.com#Alerta 1: sin cambio (on=False)
 [piltriquitron] WOULD SEND (ALERT ON) to maria@example.com#Alerta 1:
 Subject: Amigo del Viento — Piltriquitrón...
@@ -609,8 +608,6 @@ secret `GMAIL_APP_PASSWORD` — no se toca código.
   hora que califica, no se manda un mail actualizado con el detalle nuevo
   — solo se avisa en las transiciones prendida/apagada (sección 5), no en
   cada cambio de horario dentro de una ventana que sigue activa.
-- Coordenadas del aterrizaje de Grünten son aproximadas — confirmar antes
-  de confiar en ellas.
 - La elevación automática de `docs/new-site.html` (open-elevation.com) es
   una estimación de modelo satelital, no siempre exacta — confirmarla al
   aprobar un sitio si se conoce el dato real.

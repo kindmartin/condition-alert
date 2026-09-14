@@ -18,9 +18,9 @@ cualquiera lo extienda.
 
 ## Sitios disponibles hoy
 
-Grünten (Allgäu, Alemania), Cerro Otto, Cerro San Martín / La Vieja,
-Piltriquitrón, Vicente López, Loma Bola, Merlo, Cuchi Corral y Luján
-(Argentina). Ver la lista completa y actualizada en
+Cerro Otto, Cerro San Martín / La Vieja, Piltriquitrón, Vicente López,
+Loma Bola, Merlo, Cuchi Corral y Luján (Argentina). Ver la lista completa
+y actualizada en
 [`docs/sites.json`](docs/sites.json).
 
 ## Cómo sumarte (como piloto)

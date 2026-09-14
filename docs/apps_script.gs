@@ -139,8 +139,6 @@ function handleSiteProposal(payload) {
  */
 function seedExistingSites() {
   const existing = [
-    { id: "gruenten", name: "Grünten (Allgäu, DE)", tz: "Europe/Berlin",
-      launch: [47.553, 10.317, 1050], landing: [47.568, 10.335, 780] },
     { id: "lujan", name: "Luján (Buenos Aires, AR)", tz: "America/Argentina/Buenos_Aires",
       launch: [-34.57, -59.05, 30] },
     { id: "cerro_otto", name: "Cerro Otto (Bariloche, AR)", tz: "America/Argentina/Salta",
