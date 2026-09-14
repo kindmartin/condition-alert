@@ -130,15 +130,19 @@ function initMap() {
   }).addTo(map);
 
   map.on("click", (e) => {
+    // .wrap() normalizes lng back into [-180, 180] — without it, panning the
+    // map around the world several times before clicking can produce lng
+    // values like -2231 (a real value +/- a multiple of 360).
+    const latlng = e.latlng.wrap();
     if (pinMode === "launch") {
-      launchLatLng = e.latlng;
+      launchLatLng = latlng;
       if (launchMarker) launchMarker.remove();
       launchMarker = L.marker(launchLatLng, { title: "Despegue" }).addTo(map);
       document.getElementById("launchStatus").textContent =
         `Despegue: ${launchLatLng.lat.toFixed(5)}, ${launchLatLng.lng.toFixed(5)}`;
       document.getElementById("launchStatus").className = "pin-status set";
     } else {
-      landingLatLng = e.latlng;
+      landingLatLng = latlng;
       if (landingMarker) landingMarker.remove();
       landingMarker = L.marker(landingLatLng, { title: "Aterrizaje", opacity: 0.75 }).addTo(map);
       document.getElementById("landingStatus").textContent =
