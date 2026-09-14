@@ -358,16 +358,40 @@ sitios sin suscriptores (`no subscribers, skipping`).
 `SUBSCRIBERS_JSON`, y actualizás el secret completo. No requiere tocar
 `sites.yaml` ni código.
 
-## 7. Alta automática de suscriptores (Google Form)
+## 7. Alta automática de suscriptores
 
-En vez de editar `SUBSCRIBERS_JSON` a mano por cada persona, hay un
-[formulario de Google](https://forms.gle/gz4qX5SmnnXAXsAD6) que cualquiera
-puede completar (nombre, email o Telegram, sitio, nombre de la alerta, y
-la condición de viento). Ese es el único link que se comparte — nunca la
-planilla de respuestas ni el editor del formulario.
+Hay dos "puertas de entrada" para que alguien se anote — las dos terminan
+en la MISMA planilla de respuestas, así que se pueden usar indistintamente
+o incluso las dos a la vez:
+
+### Opción A — página propia (recomendada)
+
+[`docs/index.html`](docs/index.html), pensada para ser mucho más fácil de
+usar que un formulario genérico:
+
+- Mapa satelital (Esri) centrado en el punto exacto del sitio elegido,
+  con zoom a nivel de ~100m.
+- Solo ofrece "Aterrizaje" como punto de referencia si ese sitio
+  realmente tiene uno configurado (evita el bug que crasheó producción
+  con Vicente López, sección 9).
+- Selector visual (compás) para definir el cono de dirección, dibujado
+  también como cuña sobre el mapa.
+- Sliders para velocidad mínima/máxima.
+
+Para que funcione hace falta desplegarla una vez (ver "Setup de la página
+propia" más abajo). El link que se comparte con la gente es el de GitHub
+Pages, ej. `https://kindmartin.github.io/condition-alert/`.
+
+### Opción B — Google Form
+
+El [formulario de Google](https://forms.gle/gz4qX5SmnnXAXsAD6) original,
+más simple de mantener pero con la interfaz genérica de Google. Sigue
+funcionando igual que siempre.
+
+### Cómo se procesan las respuestas (igual para las dos opciones)
 
 Un workflow (`.github/workflows/sync-subscribers.yml`, en `scripts/sync_subscribers.py`)
-corre **dos veces por día** y:
+corre **cada 15 minutos** y:
 
 1. Lee las respuestas de la planilla conectada al formulario.
 2. Reconoce el sitio aunque la persona haya elegido la etiqueta linda del
@@ -396,6 +420,30 @@ tener que crear un proyecto de Google Cloud o cuenta de servicio.
 Para forzar una sincronización manual sin esperar: pestaña Actions →
 **"Sync subscribers"** → Run workflow (tildá `dry_run` para ver qué haría
 sin tocar el secret todavía).
+
+### Setup de la página propia (una sola vez)
+
+1. **Habilitar GitHub Pages**: Settings → Pages → Source: "Deploy from a
+   branch" → Branch: `main`, carpeta `/docs` → Save. GitHub te da la URL
+   (ej. `https://kindmartin.github.io/condition-alert/`) — puede tardar
+   uno o dos minutos en estar disponible la primera vez.
+2. **Desplegar el Apps Script**: abrí la planilla de respuestas → menú
+   **Extensions → Apps Script** → borrá el contenido de `Code.gs` y pegá
+   entero [`docs/apps_script.gs`](docs/apps_script.gs) → **Deploy → New
+   deployment** → tipo **"Web app"** → Execute as: **Me**, Who has
+   access: **Anyone** → Deploy. Te da una URL que termina en `/exec`
+   — copiala.
+3. **Conectar la página con el script**: editá
+   [`docs/index.html`](docs/index.html), buscá la línea
+   `const APPS_SCRIPT_URL = "PEGAR_ACA...`, reemplazá el valor por la URL
+   del paso 2, y commiteá/pusheá el cambio.
+4. Probá completando la página vos mismo y confirmá que aparece la fila
+   nueva en la planilla de respuestas.
+
+Si alguna vez agregás un sitio nuevo en `config/sites.yaml`, acordate de
+sumarlo también al arreglo `SITES` dentro de `docs/index.html` (son datos
+duplicados a propósito, para que la página no dependa de leer YAML en el
+navegador).
 
 ## 8. Setup completo (para levantar tu propia instancia desde cero)
 
