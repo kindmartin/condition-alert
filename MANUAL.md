@@ -5,6 +5,11 @@ cada hora, y avisa a cada suscriptor (por mail y/o Telegram) solo cuando se
 cumplen SUS propias condiciones. Corre gratis en la nube (GitHub Actions) —
 no hace falta tener ninguna PC prendida.
 
+Este documento es el manual de **operación** (cómo usarlo/administrarlo
+día a día). Para el diseño técnico — qué componente hace qué y cómo se
+relacionan (Sheets, Apps Script, GitHub Actions, Open-Meteo, GitHub
+Pages) — ver [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ## 1. Qué hace, en criollo
 
 Cada hora, en un servidor de GitHub (no en tu compu):
@@ -45,17 +50,23 @@ emails ni condiciones de nadie.
   "id": "cerro_otto",
   "name": "Cerro Otto (Bariloche, AR)",
   "timezone": "America/Argentina/Salta",
+  "model": "best_match",
   "points": {
     "launch": { "lat": -41.14408, "lon": -71.37665, "elevation_m": 1380 }
   }
 }
 ```
 
+`model` es el modelo de pronóstico de Open-Meteo a usar para ese sitio
+(`best_match` por defecto, que deja que Open-Meteo elija; ver sección 7.2
+para las alternativas y cuándo conviene cambiarlo).
+
 **No se edita a mano.** Lo genera automáticamente
 `scripts/sync_sites.py` (corre cada 15 minutos, igual que el de
 suscriptores) leyendo la pestaña **"Sitios propuestos"** de la planilla —
-cualquier fila con **Estado = Aprobado** entra a la lista. Ver la sección 7
-para el flujo completo de cómo se propone y aprueba un sitio nuevo.
+cualquier fila con **Estado = Aprobado** entra a la lista (y una propuesta
+nueva ya llega con ese estado, ver sección 7.2). Ver la sección 7 para el
+flujo completo de cómo se propone un sitio nuevo.
 
 ### Secret `SUBSCRIBERS_JSON` (privado — QUIÉN y QUÉ condición)
 
@@ -435,32 +446,46 @@ sin tocar el secret todavía).
 sitio: elige el nombre, hace click en el mapa satelital para marcar el
 despegue (y opcionalmente el aterrizaje), y puede pedir una estimación
 automática de elevación (open-elevation.com — igual se puede corregir a
-mano). Esto es un **proceso independiente** del alta de suscriptores, con
-su propia cola de revisión — a propósito, porque un dato de sitio mal
-cargado rompe el chequeo para TODOS los suscriptores de ese sitio (no solo
-para quien lo cargó), a diferencia de un umbral de alerta mal puesto que
-solo afecta a esa persona.
+mano). Es un **proceso independiente** del alta de suscriptores: vive en
+su propia pestaña de la planilla, "Sitios propuestos".
 
-**Flujo completo:**
+**Flujo (auto-aprobado por defecto):**
 
-1. Alguien completa `docs/new-site.html` → la respuesta cae en una pestaña
-   nueva de la misma planilla, **"Sitios propuestos"** (el Apps Script la
-   crea sola la primera vez), con **Estado = Pendiente**.
-2. Vos revisás la fila: ¿la coordenada tiene sentido? ¿la elevación es la
-   real o quedó la estimación automática sin confirmar? (lo mismo que
-   hicimos a mano para los primeros 9 sitios, con capturas satelitales).
-3. Si está bien, completás dos columnas que el proponente no llena:
-   - **Site ID**: un identificador corto sin espacios (ej. `cerro_tal`).
-   - **Timezone**: el nombre IANA de la zona horaria (ej.
-     `America/Argentina/Cordoba`, `Europe/Berlin`) — tiene que ser un
-     nombre válido o el sync lo rechaza.
-4. Cambiás **Estado** a **Aprobado**.
-5. En un rato (`sync-sites.yml` corre cada 15 minutos) el sitio aparece en
+1. Alguien completa `docs/new-site.html` → la respuesta cae en la pestaña
+   **"Sitios propuestos"** (el Apps Script la crea sola la primera vez)
+   con **Estado = Aprobado** ya puesto — no hace falta que nadie lo
+   revise antes de que quede activo.
+2. **Site ID** y **Timezone** también se completan solos: si esas
+   columnas quedan vacías, `sync_sites.py` genera el Site ID a partir del
+   nombre del sitio (slug sin espacios/acentos) y calcula el Timezone
+   directamente de las coordenadas de despegue (librería `timezonefinder`,
+   sin llamar a ningún servicio externo). Cada sync también escribe esos
+   dos valores de vuelta en la sheet (columnas N/O) para que se vean sin
+   tener que abrir `docs/sites.json` — pero nunca pisa un valor que ya
+   hayas puesto vos a mano ahí.
+3. En un rato (`sync-sites.yml` corre cada 15 minutos) el sitio aparece en
    `docs/sites.json` y ya está disponible para que la gente se suscriba —
    nada de esto toca código ni requiere un commit tuyo.
 
-Si ponés Estado en cualquier otra cosa (`Rechazado`, vacío, etc.) el sitio
-simplemente no entra a `sites.json` — no hace falta borrar la fila.
+**La única red de seguridad automática** es que `sync_sites.py` descarta
+(con log, no crashea) cualquier fila con lat/lon fuera de rango o un
+Timezone manual inválido — pero una coordenada *dentro* de rango y mal
+puesta igual entra sin que nadie la mire, porque ya no hay paso de
+revisión humana. Si un sitio quedó mal cargado, la forma de sacarlo es
+manual: cambiá su **Estado** a `Rechazado` o `Pendiente` en la fila — deja
+de entrar a `sites.json` en el próximo sync, sin que haga falta borrar la
+fila.
+
+**Columna Modelo (opcional)**: cada fila puede elegir, con un dropdown, un
+modelo de pronóstico de Open-Meteo específico en vez del default
+(`best_match`, que deja que Open-Meteo elija automáticamente). Opciones:
+`gfs_seamless`, `ecmwf_ifs025`, `icon_seamless`, `jma_seamless`,
+`gem_seamless`, `meteofrance_seamless`, `gfs_graphcast025`. Para montaña
+(terreno complejo), ninguno de los dos modelos globales disponibles para
+Sudamérica (GFS o ECMWF) resuelve bien un valle — `ecmwf_ifs025` suele
+considerarse algo más preciso globalmente, pero la única forma real de
+saber cuál anda mejor en un sitio puntual es dejarlo corriendo un tiempo y
+comparar contra lo que pasó de verdad en el aire.
 
 **Los 9 sitios originales** (los que antes vivían en `config/sites.yaml`,
 ya eliminado) se cargaron una sola vez en esta misma planilla corriendo la
@@ -522,7 +547,10 @@ existe, el orden es:
 5. **Sitios**: seguí la sección 7.2 — armá la planilla, corré
    `seedExistingSites()` con tus propios sitios iniciales (editá esa
    función en `docs/apps_script.gs` antes de correrla), publicá "Sitios
-   propuestos" como CSV, y cargá el secret `SITES_SHEET_CSV_URL`.
+   propuestos" como CSV, y cargá el secret `SITES_SHEET_CSV_URL`. Si
+   preferís mantener la revisión humana en vez de auto-aprobar, cambiá el
+   `"Aprobado"` fijo en `handleSiteProposal()` (docs/apps_script.gs) de
+   vuelta a `"Pendiente"`.
 6. **Suscriptores**: para arrancar rápido, cargá el secret
    `SUBSCRIBERS_JSON` a mano (formato en
    [`config/subscribers.example.json`](config/subscribers.example.json)).
@@ -576,7 +604,8 @@ secret `GMAIL_APP_PASSWORD` — no se toca código.
 | `sync-subscribers` falla con error 401/403 | El `GH_PAT_FOR_SECRETS` venció, o no tiene permiso "Secrets: Read and write" sobre el repo. |
 | `Wind check` falla con `KeyError` de un nombre de punto (ej. `'landing'`) | Alguien eligió "Aterrizaje" en un sitio que solo tiene despegue configurado. El sync de sitios y el de suscriptores ya descartan esas capas/sitios inválidos automáticamente (no debería volver a pasar), pero si ves esto en un secret cargado a mano, revisá que el `point` de cada capa exista en los `points` del sitio. |
 | Alguien no aparece después de completar una página/formulario | El sync corre cada 15 minutos — esperá un rato. Para probar ya, corré el workflow manual correspondiente (sección 7). |
-| Un sitio propuesto no aparece en `sites.json` aunque esté "Aprobado" | Revisá que **Site ID** y **Timezone** estén completos y que el timezone sea un nombre IANA válido (`sync-sites` lo rechaza si no) — mirá el log de la corrida en Actions. |
+| Un sitio propuesto no aparece en `sites.json` aunque esté "Aprobado" | Site ID y Timezone se autogeneran si quedan vacíos, así que normalmente no hace falta tocarlos. Causas reales: coordenadas de despegue faltantes o fuera de rango, o un Timezone puesto a mano que no es un nombre IANA válido — mirá el log de la corrida en Actions (workflow "Sync sites"). |
+| `sync-sites` falla con `MissingSchema: Invalid URL ''` o el log muestra `SITES_SHEET_CSV_URL:` vacío | El secret `SITES_SHEET_CSV_URL` no está cargado (o se borró) — cargalo como se explica en la sección 7.2/8. Sin él, el workflow nunca llegó a sincronizar nada real, aunque corra "sin errores visibles" en el resumen. |
 | Longitud rarísima en "Sitios propuestos" (ej. `-2231.36...`) | Bug ya arreglado (commit del `wrap()` en `new-site.html`) — si ves una fila vieja así, es de antes del fix, borrala o corregila a mano. |
 
 ## 10. Dónde está cada cosa (para referencia)
@@ -599,6 +628,7 @@ secret `GMAIL_APP_PASSWORD` — no se toca código.
 - Lógica de ambos syncs, más helpers compartidos (`sheet_columns.py`): [`scripts/`](scripts)
 - Historial de qué alertas están prendidas: [`state/sent_log.json`](state/sent_log.json)
 - Intro general (para quien no va a operar el bot, solo usarlo): [`README.md`](README.md)
+- Diseño técnico y diagrama de componentes: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
 ## 11. Limitaciones conocidas (v1)
 
@@ -609,7 +639,12 @@ secret `GMAIL_APP_PASSWORD` — no se toca código.
   — solo se avisa en las transiciones prendida/apagada (sección 5), no en
   cada cambio de horario dentro de una ventana que sigue activa.
 - La elevación automática de `docs/new-site.html` (open-elevation.com) es
-  una estimación de modelo satelital, no siempre exacta — confirmarla al
-  aprobar un sitio si se conoce el dato real.
-- Sitios propuestos requieren revisión humana (Estado = Aprobado) antes de
-  quedar activos — a propósito, no es un bug (sección 7.2).
+  una estimación de modelo satelital, no siempre exacta.
+- **Sitios propuestos se auto-aprueban, sin revisión humana** (sección
+  7.2) — una coordenada mal puesta pero dentro de rango entra igual y
+  afecta a todos los que se suscriban a ese sitio. La única forma de
+  sacarlo es notarlo y cambiar su Estado a mano.
+- Ninguno de los modelos de pronóstico disponibles para Sudamérica (GFS,
+  ECMWF) tiene resolución regional de alta definición para los Andes —
+  el campo `model` (sección 7.2) permite comparar, no "arreglar" esa
+  limitación de fondo.

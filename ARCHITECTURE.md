@@ -5,6 +5,66 @@ paso a paso de setup/troubleshooting ver [`MANUAL.md`](MANUAL.md). La
 última sección de este documento es el manual de operación desde el
 punto de vista de quien usa el producto (piloto/suscriptor).
 
+## 0. Diagrama de componentes
+
+```mermaid
+flowchart TB
+    subgraph UI["Interfaz (GitHub Pages, docs/)"]
+        IDX["index.html<br/>alta de alertas"]
+        NEW["new-site.html<br/>proponer sitio"]
+    end
+
+    subgraph GAS["Google Apps Script (Web App /exec)"]
+        DOPOST["doPost(payload)"]
+        HA["handleAlert()"]
+        HSP["handleSiteProposal()<br/>Estado=Aprobado por defecto"]
+        HB["handleSiteSyncBackfill()<br/>escribe Site ID/Timezone de vuelta"]
+    end
+
+    subgraph SHEET["Google Sheet"]
+        S1["Hoja respuestas<br/>(alertas)"]
+        S2["Sitios propuestos<br/>(sitios)"]
+    end
+
+    subgraph GHA["GitHub Actions (cron)"]
+        SS["sync-sites.yml<br/>cada 15 min"]
+        SU["sync-subscribers.yml<br/>cada 15 min"]
+        WC["wind-check.yml<br/>cada hora"]
+    end
+
+    subgraph REPO["Repo GitHub (público)"]
+        SITESJSON["docs/sites.json"]
+        STATE["state/sent_log.json"]
+    end
+
+    SECRET["Secret SUBSCRIBERS_JSON<br/>(privado, cifrado)"]
+    OM["Open-Meteo API<br/>(modelo por sitio)"]
+    USER["Piloto"]
+
+    USER -->|completa| IDX
+    USER -->|completa| NEW
+    IDX -->|POST JSON| DOPOST
+    NEW -->|POST JSON| DOPOST
+    DOPOST --> HA --> S1
+    DOPOST --> HSP --> S2
+
+    SU -->|lee CSV| S1
+    SU -->|cifra y sube| SECRET
+
+    SS -->|lee CSV| S2
+    SS -->|calcula id/tz/modelo| SITESJSON
+    SS -->|commit git| REPO
+    SS -->|POST backfill| DOPOST --> HB --> S2
+
+    IDX -->|fetch sites.json| SITESJSON
+
+    WC -->|lee| SITESJSON
+    WC -->|lee| SECRET
+    WC -->|pide pronóstico por modelo| OM
+    WC -->|evalúa y compara| STATE
+    WC -->|mail/Telegram| USER
+```
+
 ## 1. Idea general
 
 Todo el sistema corre sin servidores ni hardware propio: el cómputo son
@@ -80,11 +140,17 @@ una altura pedida por el usuario (ej. "+1000m AGL sobre el despegue"):
 
 ### 4.1 Sitios (`docs/sites.json`)
 
-**Por qué es un proceso separado y con revisión humana**, a diferencia
-de suscriptores: una coordenada mal cargada en un sitio rompe el chequeo
-para *todos* los suscriptores de ese sitio; un umbral mal puesto en una
-alerta personal solo afecta a esa persona. El radio de impacto de un
-error justifica un gate manual acá y no en el otro flujo.
+**Diseño original vs. actual**: se pensó con un gate de revisión humana
+(un sitio quedaba `Pendiente` hasta que un admin lo aprobaba a mano),
+justamente porque una coordenada mal cargada rompe el chequeo para
+*todos* los suscriptores de ese sitio, no solo para quien lo cargó — a
+diferencia de un umbral de alerta personal mal puesto, que solo afecta a
+esa persona. Por decisión explícita del operador, hoy los sitios se
+**auto-aprueban** al proponerse; la única red de seguridad automática que
+queda es la validación de rango de lat/lon en `sync_sites.py` (una
+coordenada dentro de rango pero incorrecta igual entra sin que nadie la
+revise). Revertir a revisión manual es un cambio de una línea en
+`docs/apps_script.gs` (`handleSiteProposal`, ver MANUAL.md §8).
 
 Flujo:
 1. Alguien completa [`docs/new-site.html`](docs/new-site.html) (mapa
@@ -92,25 +158,39 @@ Flujo:
    automática de elevación vía `api.open-elevation.com`).
 2. El form hace POST a un Google Apps Script (`docs/apps_script.gs`,
    función `handleSiteProposal`), que agrega una fila a la pestaña
-   "Sitios propuestos" de la Sheet con `Estado: "Pendiente"` y
-   `Site ID`/`Timezone` vacíos.
-3. Un humano (admin) revisa la fila a mano, completa `Site ID` (slug
-   único) y `Timezone` (zona IANA válida), y cambia `Estado` a
-   `"Aprobado"`.
-4. `scripts/sync_sites.py`, corrido cada 15 min por
+   "Sitios propuestos" de la Sheet con `Estado: "Aprobado"` ya puesto y
+   `Site ID`/`Timezone`/`Modelo` vacíos.
+3. `scripts/sync_sites.py`, corrido cada 15 min por
    `sync-sites.yml`, lee esa pestaña publicada como CSV
    (`SITES_SHEET_CSV_URL`), filtra filas con Estado que contenga
-   "aprobado"/"approved", valida que el timezone sea una zona IANA real
-   (`zoneinfo.ZoneInfo`, si no existe descarta la fila con log) y que
-   estén las 3 coordenadas de despegue, arma el punto `landing` solo si
-   "Tiene aterrizaje" es verdadero y sus 3 coordenadas están presentes,
-   aplica "última fila aprobada por `site_id` gana" (permite corregir un
-   sitio re-aprobando una fila nueva), y escribe `docs/sites.json`
-   ordenado por id.
-5. El workflow commitea `docs/sites.json` con el `GITHUB_TOKEN` propio
+   "aprobado"/"approved", valida que las 3 coordenadas de despegue estén
+   presentes y dentro de rango (`-90..90`/`-180..180`), arma el punto
+   `landing` solo si "Tiene aterrizaje" es verdadero y sus 3 coordenadas
+   están presentes y en rango, y para `Site ID`/`Timezone`:
+   - si `Site ID` está vacío, lo genera con un slug del nombre del sitio
+     (sin acentos/espacios), con manejo de colisiones entre sitios
+     distintos que generarían el mismo slug;
+   - si `Timezone` está vacío o es inválido, lo calcula directo de las
+     coordenadas de despegue con `timezonefinder` (offline, sin llamar a
+     ningún servicio externo);
+   - `Modelo` (opcional) fija qué modelo de Open-Meteo usar para ese
+     sitio en vez del default `best_match` — se valida contra una lista
+     fija (`ALLOWED_MODELS` en `fetch_forecast.py`), cualquier valor no
+     reconocido cae también a `best_match`.
+
+   Aplica "última fila aprobada por `site_id` gana" (permite corregir un
+   sitio editando esa misma fila), y escribe `docs/sites.json` ordenado
+   por id.
+4. El workflow commitea `docs/sites.json` con el `GITHUB_TOKEN` propio
    (no necesita ningún secret nuevo — a diferencia del pipeline de
    suscriptores, escribir un archivo del repo no requiere el cifrado
    sealed-box que sí exige la API de Secrets).
+5. Para las filas donde generó Site ID/Timezone, `sync_sites.py` hace un
+   segundo POST al mismo Apps Script (`_kind: "site_sync_backfill"` →
+   `handleSiteSyncBackfill`) para escribir esos valores de vuelta en la
+   sheet — puramente cosmético (visibilidad para el admin), nunca pisa
+   una celda que ya tenga contenido, y si falla no aborta el sync (
+   `docs/sites.json` ya se escribió antes de este paso).
 6. `docs/index.html` (página de alta de alertas) hace
    `fetch("sites.json")` al cargar y llena el dropdown de sitios en
    runtime — ningún sitio está hardcodeado en HTML/JS/Python/YAML.
