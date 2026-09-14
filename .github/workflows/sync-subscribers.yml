@@ -2,7 +2,7 @@ name: Sync subscribers
 
 on:
   schedule:
-    - cron: "0 9,21 * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:

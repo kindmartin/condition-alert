@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amigo del Viento — Alta de alerta</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #f4f6f5;
+    --card: #ffffff;
+    --text: #1c2b28;
+    --muted: #5b6b67;
+    --accent: #1f8a5f;
+    --accent-dark: #146b48;
+    --border: #dde4e1;
+    --danger: #b3413a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  header p { color: var(--muted); margin: 0; font-size: 0.9rem; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  .card h2 { font-size: 1rem; margin: 0 0 12px; color: var(--accent-dark); }
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin: 12px 0 4px; }
+  label:first-of-type { margin-top: 0; }
+  select, input[type=text], input[type=email], input[type=number] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 1rem;
+    background: #fff;
+    color: var(--text);
+  }
+  .hint { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  #map { height: 260px; border-radius: 10px; margin-top: 8px; border: 1px solid var(--border); }
+  .radiogroup { display: flex; gap: 8px; flex-wrap: wrap; }
+  .radiogroup label {
+    flex: 1;
+    min-width: 90px;
+    text-align: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 6px;
+    font-weight: 500;
+    font-size: 0.85rem;
+    margin: 0;
+    cursor: pointer;
+    background: #fff;
+  }
+  .radiogroup input { display: none; }
+  .radiogroup input:checked + span { color: #fff; }
+  .radiogroup label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  .slider-row input[type=range] { flex: 1; }
+  .slider-val { min-width: 54px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  #compassWrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 8px; }
+  #compass { touch-action: none; cursor: grab; }
+  .compass-readout { font-size: 0.85rem; color: var(--muted); text-align: center; }
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn:active { background: var(--accent-dark); }
+  .btn:disabled { background: #9fb3ae; cursor: not-allowed; }
+  #status { margin-top: 12px; font-size: 0.9rem; text-align: center; white-space: pre-wrap; }
+  #status.ok { color: var(--accent-dark); }
+  #status.err { color: var(--danger); }
+  [hidden] { display: none !important; }
+  footer { text-align: center; font-size: 0.78rem; color: var(--muted); margin-top: 24px; }
+  footer a { color: var(--accent-dark); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🪂 Amigo del Viento</h1>
+    <p>Alta, edición o baja de tu alerta de viento</p>
+  </header>
+
+  <form id="alertForm">
+    <div class="card">
+      <h2>Quién sos</h2>
+      <label for="name">Nombre</label>
+      <input type="text" id="name" required placeholder="Tu nombre">
+
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="vos@ejemplo.com">
+      <p class="hint">Email y/o Telegram — al menos uno de los dos.</p>
+
+      <label for="telegram">Telegram chat_id (opcional)</label>
+      <input type="number" id="telegram" placeholder="123456789">
+      <p class="hint">Hablale a <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a> en Telegram y te devuelve tu ID numérico.</p>
+    </div>
+
+    <div class="card">
+      <h2>Qué querés hacer</h2>
+      <label for="accion">Acción</label>
+      <select id="accion">
+        <option value="Nueva Alerta">Nueva Alerta</option>
+        <option value="Modificar Alerta">Modificar Alerta</option>
+        <option value="Remover Alerta">Remover Alerta</option>
+      </select>
+
+      <label for="alertName">Nombre de la Alerta</label>
+      <select id="alertName">
+        <option>Alerta 1</option>
+        <option>Alerta 2</option>
+        <option>Alerta 3</option>
+      </select>
+      <p class="hint">Si ya tenías una alerta en este sitio, elegí el mismo nombre para editarla o removerla.</p>
+    </div>
+
+    <div class="card">
+      <h2>Dónde</h2>
+      <label for="site">Sitio</label>
+      <select id="site"></select>
+
+      <label for="point">Punto de referencia</label>
+      <select id="point"></select>
+
+      <div id="map"></div>
+      <p class="hint" id="pointHint"></p>
+    </div>
+
+    <div class="card" id="conditionCard">
+      <h2>Condición de viento</h2>
+
+      <label>Tipo de capa</label>
+      <div class="radiogroup">
+        <label><input type="radio" name="kind" value="surface" checked><span>Superficie (10m)</span></label>
+        <label><input type="radio" name="kind" value="agl"><span>Sobre el punto (AGL)</span></label>
+        <label><input type="radio" name="kind" value="msl"><span>Sobre el nivel del mar (MSL)</span></label>
+      </div>
+
+      <div id="metersRow" hidden>
+        <label for="meters">Metros</label>
+        <input type="number" id="meters" min="0" step="50" placeholder="ej. 1000">
+      </div>
+
+      <label>Velocidad mínima (km/h)</label>
+      <div class="slider-row">
+        <input type="range" id="minSpeed" min="0" max="100" value="10">
+        <span class="slider-val" id="minSpeedVal">10</span>
+      </div>
+
+      <label>Velocidad máxima (km/h)</label>
+      <div class="slider-row">
+        <input type="range" id="maxSpeed" min="0" max="100" value="30">
+        <span class="slider-val" id="maxSpeedVal">30</span>
+      </div>
+
+      <label for="gust">Ráfaga máxima (km/h, opcional)</label>
+      <input type="number" id="gust" min="0" placeholder="ej. 40">
+
+      <label>Dirección (cono)</label>
+      <div id="compassWrap">
+        <svg id="compass" width="220" height="220" viewBox="0 0 220 220"></svg>
+        <div class="compass-readout">
+          De <strong><span id="dirMinLabel">315</span>°</strong>
+          a <strong><span id="dirMaxLabel">45</span>°</strong>
+          — arrastrá los círculos sobre el mapa de arriba te muestra dónde queda
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn" id="submitBtn">Guardar alerta</button>
+    <div id="status"></div>
+  </form>
+
+  <footer>
+    Los datos van a una planilla que sincroniza el bot cada rato — no hace falta cuenta de GitHub.
+    Ver el proyecto en <a href="https://github.com/kindmartin/condition-alert" target="_blank">github.com/kindmartin/condition-alert</a>.
+  </footer>
+</div>
+
+<script>
+// Mirror of config/sites.yaml — update both when a site is added/changed.
+const SITES = [
+  { id: "gruenten", name: "Grünten (Allgäu, DE)", points: {
+      launch: { lat: 47.553, lon: 10.317, elevation_m: 1050 },
+      landing: { lat: 47.568, lon: 10.335, elevation_m: 780 } } },
+  { id: "lujan", name: "Luján (Buenos Aires, AR)", points: {
+      launch: { lat: -34.57, lon: -59.05, elevation_m: 30 } } },
+  { id: "cerro_otto", name: "Cerro Otto (Bariloche, AR)", points: {
+      launch: { lat: -41.14408, lon: -71.37665, elevation_m: 1380 } } },
+  { id: "cerro_san_martin", name: "Cerro San Martín / La Vieja (Bariloche, AR)", points: {
+      launch: { lat: -41.1578, lon: -71.4289, elevation_m: 1250 } } },
+  { id: "piltriquitron", name: "Piltriquitrón (El Bolsón, AR)", points: {
+      launch: { lat: -41.97461, lon: -71.48016, elevation_m: 1115 } } },
+  { id: "vicente_lopez", name: "Vicente López (Buenos Aires, AR)", points: {
+      launch: { lat: -34.52833, lon: -58.46155, elevation_m: 8 } } },
+  { id: "loma_bola", name: "Loma Bola (Tucumán, AR)", points: {
+      launch: { lat: -26.82281, lon: -65.36882, elevation_m: 1355 } } },
+  { id: "merlo", name: "Merlo (San Luis, AR)", points: {
+      launch: { lat: -32.36947, lon: -64.9391, elevation_m: 1772 } } },
+  { id: "cuchi_corral", name: "Cuchi Corral (Córdoba, AR)", points: {
+      launch: { lat: -30.96712, lon: -64.58465, elevation_m: 1103 } } },
+];
+
+// Fill after deploying the Apps Script (see docs/apps_script.gs / MANUAL.md).
+const APPS_SCRIPT_URL = "PEGAR_ACA_LA_URL_DEL_APPS_SCRIPT";
+
+const POINT_LABELS = { launch: "Despegue", landing: "Aterrizaje" };
+
+const siteSelect = document.getElementById("site");
+const pointSelect = document.getElementById("point");
+const pointHint = document.getElementById("pointHint");
+
+for (const site of SITES) {
+  const opt = document.createElement("option");
+  opt.value = site.id;
+  opt.textContent = site.name;
+  siteSelect.appendChild(opt);
+}
+
+function currentSite() {
+  return SITES.find(s => s.id === siteSelect.value);
+}
+
+function refreshPointOptions() {
+  const site = currentSite();
+  pointSelect.innerHTML = "";
+  for (const key of Object.keys(site.points)) {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = POINT_LABELS[key] || key;
+    pointSelect.appendChild(opt);
+  }
+}
+
+// ---- Map ----
+let map, marker, coneLayer;
+
+function initMap() {
+  map = L.map("map", { zoomControl: true, attributionControl: false });
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 19,
+    attribution: "Tiles &copy; Esri",
+  }).addTo(map);
+}
+
+function destinationPoint(lat, lon, bearingDeg, distanceM) {
+  const R = 6371000;
+  const brng = (bearingDeg * Math.PI) / 180;
+  const lat1 = (lat * Math.PI) / 180;
+  const lon1 = (lon * Math.PI) / 180;
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(distanceM / R) + Math.cos(lat1) * Math.sin(distanceM / R) * Math.cos(brng)
+  );
+  const lon2 =
+    lon1 +
+    Math.atan2(
+      Math.sin(brng) * Math.sin(distanceM / R) * Math.cos(lat1),
+      Math.cos(distanceM / R) - Math.sin(lat1) * Math.sin(lat2)
+    );
+  return [(lat2 * 180) / Math.PI, (lon2 * 180) / Math.PI];
+}
+
+function conePolygon(lat, lon, minDeg, maxDeg, radiusM) {
+  const points = [[lat, lon]];
+  let span = maxDeg - minDeg;
+  if (span <= 0) span += 360;
+  const steps = 24;
+  for (let i = 0; i <= steps; i++) {
+    const bearing = (minDeg + (span * i) / steps) % 360;
+    points.push(destinationPoint(lat, lon, bearing, radiusM));
+  }
+  points.push([lat, lon]);
+  return points;
+}
+
+function updateMap() {
+  const site = currentSite();
+  const point = site.points[pointSelect.value];
+  if (!point) return;
+
+  pointHint.textContent = `${POINT_LABELS[pointSelect.value] || pointSelect.value}: ${point.lat.toFixed(5)}, ${point.lon.toFixed(5)} — ${point.elevation_m}m`;
+
+  map.setView([point.lat, point.lon], 18);
+
+  if (marker) marker.remove();
+  marker = L.marker([point.lat, point.lon]).addTo(map);
+
+  drawCone(point.lat, point.lon);
+}
+
+function drawCone(lat, lon) {
+  if (coneLayer) coneLayer.remove();
+  const minDeg = parseFloat(document.getElementById("dirMinLabel").textContent);
+  const maxDeg = parseFloat(document.getElementById("dirMaxLabel").textContent);
+  const poly = conePolygon(lat, lon, minDeg, maxDeg, 400);
+  coneLayer = L.polygon(poly, { color: "#ffb703", weight: 2, fillColor: "#ffb703", fillOpacity: 0.35 }).addTo(map);
+}
+
+// ---- Compass widget ----
+const compassSvg = document.getElementById("compass");
+const CX = 110, CY = 110, R = 90;
+let dirMin = 315, dirMax = 45;
+let dragging = null; // "min" | "max" | null
+
+function angleToXY(deg) {
+  const rad = (deg * Math.PI) / 180;
+  return [CX + R * Math.sin(rad), CY - R * Math.cos(rad)];
+}
+
+function xyToAngle(x, y) {
+  const dx = x - CX, dy = y - CY;
+  let deg = (Math.atan2(dx, -dy) * 180) / Math.PI;
+  if (deg < 0) deg += 360;
+  return Math.round(deg);
+}
+
+function arcPath(minDeg, maxDeg) {
+  let span = maxDeg - minDeg;
+  if (span <= 0) span += 360;
+  const [x1, y1] = angleToXY(minDeg);
+  const [x2, y2] = angleToXY(maxDeg);
+  const largeArc = span > 180 ? 1 : 0;
+  return `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+}
+
+function renderCompass() {
+  const parts = [];
+  // ticks + labels
+  const dirs = [["N", 0], ["E", 90], ["S", 180], ["O", 270]];
+  parts.push(`<circle cx="${CX}" cy="${CY}" r="${R}" fill="#eef2f0" stroke="#c7d2ce" />`);
+  parts.push(`<path d="${arcPath(dirMin, dirMax)}" fill="#ffb703" fill-opacity="0.55" stroke="#e08e00" />`);
+  for (const [label, deg] of dirs) {
+    const [x, y] = angleToXY(deg);
+    const [lx, ly] = angleToXY(deg);
+    parts.push(`<text x="${lx}" y="${ly}" font-size="13" font-weight="700" text-anchor="middle" dominant-baseline="middle" fill="#5b6b67">${label}</text>`);
+  }
+  const [minX, minY] = angleToXY(dirMin);
+  const [maxX, maxY] = angleToXY(dirMax);
+  parts.push(`<circle id="handleMin" data-h="min" cx="${minX}" cy="${minY}" r="12" fill="#146b48" stroke="#fff" stroke-width="2" />`);
+  parts.push(`<circle id="handleMax" data-h="max" cx="${maxX}" cy="${maxY}" r="12" fill="#1f8a5f" stroke="#fff" stroke-width="2" />`);
+  compassSvg.innerHTML = parts.join("");
+
+  document.getElementById("dirMinLabel").textContent = dirMin;
+  document.getElementById("dirMaxLabel").textContent = dirMax;
+  if (map) drawCone(currentSite().points[pointSelect.value].lat, currentSite().points[pointSelect.value].lon);
+}
+
+function svgPointFromEvent(evt) {
+  const rect = compassSvg.getBoundingClientRect();
+  const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+  const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+  const x = ((clientX - rect.left) / rect.width) * 220;
+  const y = ((clientY - rect.top) / rect.height) * 220;
+  return [x, y];
+}
+
+compassSvg.addEventListener("pointerdown", (evt) => {
+  const target = evt.target.closest("[data-h]");
+  dragging = target ? target.dataset.h : null;
+  if (!dragging) {
+    // click elsewhere on the dial: move whichever handle is closer
+    const [x, y] = svgPointFromEvent(evt);
+    const deg = xyToAngle(x, y);
+    const dMin = Math.min(Math.abs(deg - dirMin), 360 - Math.abs(deg - dirMin));
+    const dMax = Math.min(Math.abs(deg - dirMax), 360 - Math.abs(deg - dirMax));
+    dragging = dMin <= dMax ? "min" : "max";
+    if (dragging === "min") dirMin = deg; else dirMax = deg;
+    renderCompass();
+  }
+});
+window.addEventListener("pointermove", (evt) => {
+  if (!dragging) return;
+  const [x, y] = svgPointFromEvent(evt);
+  const deg = xyToAngle(x, y);
+  if (dragging === "min") dirMin = deg; else dirMax = deg;
+  renderCompass();
+});
+window.addEventListener("pointerup", () => { dragging = null; });
+
+// ---- Kind / meters toggle ----
+document.querySelectorAll('input[name="kind"]').forEach((radio) => {
+  radio.addEventListener("change", () => {
+    document.getElementById("metersRow").hidden = radio.value === "surface" || !radio.checked;
+  });
+});
+function syncMetersVisibility() {
+  const kind = document.querySelector('input[name="kind"]:checked').value;
+  document.getElementById("metersRow").hidden = kind === "surface";
+}
+
+// ---- Sliders ----
+function bindSlider(id, valId) {
+  const el = document.getElementById(id);
+  const val = document.getElementById(valId);
+  el.addEventListener("input", () => (val.textContent = el.value));
+  val.textContent = el.value;
+}
+bindSlider("minSpeed", "minSpeedVal");
+bindSlider("maxSpeed", "maxSpeedVal");
+
+// ---- Site/point change ----
+siteSelect.addEventListener("change", () => { refreshPointOptions(); updateMap(); });
+pointSelect.addEventListener("change", updateMap);
+
+// ---- Submit ----
+document.getElementById("alertForm").addEventListener("submit", async (evt) => {
+  evt.preventDefault();
+  const btn = document.getElementById("submitBtn");
+  const status = document.getElementById("status");
+  status.className = "";
+  status.textContent = "";
+
+  const email = document.getElementById("email").value.trim();
+  const telegram = document.getElementById("telegram").value.trim();
+  if (!email && !telegram) {
+    status.className = "err";
+    status.textContent = "Completá email o Telegram chat_id (al menos uno).";
+    return;
+  }
+  if (APPS_SCRIPT_URL.includes("PEGAR_ACA")) {
+    status.className = "err";
+    status.textContent = "Falta configurar APPS_SCRIPT_URL en docs/index.html (ver MANUAL.md).";
+    return;
+  }
+
+  const site = currentSite();
+  const kind = document.querySelector('input[name="kind"]:checked').value;
+  const payload = {
+    nombre: document.getElementById("name").value.trim(),
+    email: email,
+    telegram: telegram,
+    accion: document.getElementById("accion").value,
+    nombreAlerta: document.getElementById("alertName").value,
+    sitio: site.name,
+    tipoReferencia: POINT_LABELS[pointSelect.value] || pointSelect.value,
+    tipoDeCapa: kind,
+    metros: kind === "surface" ? "" : document.getElementById("meters").value,
+    velocidadMinima: document.getElementById("minSpeed").value,
+    velocidadMaxima: document.getElementById("maxSpeed").value,
+    rafagaMaxima: document.getElementById("gust").value,
+    direccionMinima: dirMin,
+    direccionMaxima: dirMax,
+  };
+
+  btn.disabled = true;
+  status.textContent = "Enviando...";
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      status.className = "ok";
+      status.textContent = "¡Listo! Tu alerta va a estar activa en unos minutos.";
+    } else {
+      throw new Error(data.error || "Error desconocido");
+    }
+  } catch (err) {
+    status.className = "err";
+    status.textContent = "No se pudo guardar: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ---- Init ----
+refreshPointOptions();
+initMap();
+updateMap();
+renderCompass();
+syncMetersVisibility();
+</script>
+</body>
+</html>
