@@ -1,0 +1,75 @@
+[
+  {
+    "id": "gruenten",
+    "name": "Grünten (Allgäu, DE)",
+    "timezone": "Europe/Berlin",
+    "points": {
+      "launch": { "lat": 47.553, "lon": 10.317, "elevation_m": 1050 },
+      "landing": { "lat": 47.568, "lon": 10.335, "elevation_m": 780 }
+    }
+  },
+  {
+    "id": "lujan",
+    "name": "Luján (Buenos Aires, AR)",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "points": {
+      "launch": { "lat": -34.57, "lon": -59.05, "elevation_m": 30 }
+    }
+  },
+  {
+    "id": "cerro_otto",
+    "name": "Cerro Otto (Bariloche, AR)",
+    "timezone": "America/Argentina/Salta",
+    "points": {
+      "launch": { "lat": -41.14408, "lon": -71.37665, "elevation_m": 1380 }
+    }
+  },
+  {
+    "id": "cerro_san_martin",
+    "name": "Cerro San Martín / La Vieja (Bariloche, AR)",
+    "timezone": "America/Argentina/Salta",
+    "points": {
+      "launch": { "lat": -41.1578, "lon": -71.4289, "elevation_m": 1250 }
+    }
+  },
+  {
+    "id": "piltriquitron",
+    "name": "Piltriquitrón (El Bolsón, AR)",
+    "timezone": "America/Argentina/Salta",
+    "points": {
+      "launch": { "lat": -41.97461, "lon": -71.48016, "elevation_m": 1115 }
+    }
+  },
+  {
+    "id": "vicente_lopez",
+    "name": "Vicente López (Buenos Aires, AR)",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "points": {
+      "launch": { "lat": -34.52833, "lon": -58.46155, "elevation_m": 8 }
+    }
+  },
+  {
+    "id": "loma_bola",
+    "name": "Loma Bola (Tucumán, AR)",
+    "timezone": "America/Argentina/Tucuman",
+    "points": {
+      "launch": { "lat": -26.82281, "lon": -65.36882, "elevation_m": 1355 }
+    }
+  },
+  {
+    "id": "merlo",
+    "name": "Merlo (San Luis, AR)",
+    "timezone": "America/Argentina/San_Luis",
+    "points": {
+      "launch": { "lat": -32.36947, "lon": -64.9391, "elevation_m": 1772 }
+    }
+  },
+  {
+    "id": "cuchi_corral",
+    "name": "Cuchi Corral (Córdoba, AR)",
+    "timezone": "America/Argentina/Cordoba",
+    "points": {
+      "launch": { "lat": -30.96712, "lon": -64.58465, "elevation_m": 1103 }
+    }
+  }
+]

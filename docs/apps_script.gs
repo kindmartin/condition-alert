@@ -25,6 +25,9 @@ const PROPOSALS_HEADERS = [
   "Despegue lat", "Despegue lon", "Despegue elev (m)",
   "Tiene aterrizaje", "Aterrizaje lat", "Aterrizaje lon", "Aterrizaje elev (m)",
   "Comentarios",
+  "Estado",     // Pendiente / Aprobado / Rechazado — el admin lo cambia a mano
+  "Site ID",    // slug único (ej. "cerro_tal") — lo completa el admin al aprobar
+  "Timezone",   // IANA (ej. "America/Argentina/Cordoba") — lo completa el admin al aprobar
 ];
 
 function doPost(e) {
@@ -97,7 +100,70 @@ function handleSiteProposal(payload) {
     payload.aterrizajeLon || "",
     payload.aterrizajeElev || "",
     payload.comentarios || "",
+    "Pendiente",
+    "",
+    "",
   ]);
+}
+
+/**
+ * Run this ONCE, manually, from the Apps Script editor (select
+ * "seedExistingSites" in the function dropdown next to Run -> Run) to load
+ * the sites that already existed in config/sites.yaml before this sheet
+ * became the source of truth. Safe to re-run — it skips ids already present.
+ */
+function seedExistingSites() {
+  const existing = [
+    { id: "gruenten", name: "Grünten (Allgäu, DE)", tz: "Europe/Berlin",
+      launch: [47.553, 10.317, 1050], landing: [47.568, 10.335, 780] },
+    { id: "lujan", name: "Luján (Buenos Aires, AR)", tz: "America/Argentina/Buenos_Aires",
+      launch: [-34.57, -59.05, 30] },
+    { id: "cerro_otto", name: "Cerro Otto (Bariloche, AR)", tz: "America/Argentina/Salta",
+      launch: [-41.14408, -71.37665, 1380] },
+    { id: "cerro_san_martin", name: "Cerro San Martín / La Vieja (Bariloche, AR)", tz: "America/Argentina/Salta",
+      launch: [-41.1578, -71.4289, 1250] },
+    { id: "piltriquitron", name: "Piltriquitrón (El Bolsón, AR)", tz: "America/Argentina/Salta",
+      launch: [-41.97461, -71.48016, 1115] },
+    { id: "vicente_lopez", name: "Vicente López (Buenos Aires, AR)", tz: "America/Argentina/Buenos_Aires",
+      launch: [-34.52833, -58.46155, 8] },
+    { id: "loma_bola", name: "Loma Bola (Tucumán, AR)", tz: "America/Argentina/Tucuman",
+      launch: [-26.82281, -65.36882, 1355] },
+    { id: "merlo", name: "Merlo (San Luis, AR)", tz: "America/Argentina/San_Luis",
+      launch: [-32.36947, -64.9391, 1772] },
+    { id: "cuchi_corral", name: "Cuchi Corral (Córdoba, AR)", tz: "America/Argentina/Cordoba",
+      launch: [-30.96712, -64.58465, 1103] },
+  ];
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(PROPOSALS_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(PROPOSALS_SHEET_NAME);
+    sheet.appendRow(PROPOSALS_HEADERS);
+  }
+
+  const idColIdx = PROPOSALS_HEADERS.indexOf("Site ID");
+  const existingIds = sheet.getLastRow() > 1
+    ? sheet.getRange(2, idColIdx + 1, sheet.getLastRow() - 1, 1).getValues().flat()
+    : [];
+
+  existing.forEach((site) => {
+    if (existingIds.indexOf(site.id) !== -1) return; // already seeded
+    sheet.appendRow([
+      new Date(),
+      "seed",
+      "",
+      site.name,
+      site.launch[0], site.launch[1], site.launch[2],
+      site.landing ? "Si" : "No",
+      site.landing ? site.landing[0] : "",
+      site.landing ? site.landing[1] : "",
+      site.landing ? site.landing[2] : "",
+      "Sitio original, cargado por seedExistingSites()",
+      "Aprobado",
+      site.id,
+      site.tz,
+    ]);
+  });
 }
 
 function normalize(text) {

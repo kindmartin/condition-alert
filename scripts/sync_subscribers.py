@@ -27,43 +27,16 @@ import argparse
 import json
 import os
 import sys
-import unicodedata
 from pathlib import Path
-
-import yaml
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from github_secret import set_secret
+from sheet_columns import cell, find_col, normalize, parse_float
 from sheets import fetch_rows
 
 ROOT = Path(__file__).resolve().parent.parent
-SITES_PATH = ROOT / "config" / "sites.yaml"
-
-
-def normalize(text):
-    text = unicodedata.normalize("NFKD", str(text)).encode("ascii", "ignore").decode("ascii")
-    return text.lower().strip()
-
-
-def find_col(headers_norm, *keywords):
-    for i, header in enumerate(headers_norm):
-        if all(keyword in header for keyword in keywords):
-            return i
-    return None
-
-
-def cell(row, index):
-    if index is None or index >= len(row):
-        return ""
-    return row[index].strip()
-
-
-def parse_float(value):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
+SITES_PATH = ROOT / "docs" / "sites.json"
 
 
 def parse_point(value):
@@ -153,7 +126,7 @@ def build_layer(row, cols, available_points):
 def sync(dry_run=False):
     csv_url = os.environ["SHEET_CSV_URL"]
 
-    site_configs = yaml.safe_load(SITES_PATH.read_text(encoding="utf-8"))["sites"]
+    site_configs = json.loads(SITES_PATH.read_text(encoding="utf-8"))
     valid_site_ids = {s["id"] for s in site_configs}
     points_by_site = {s["id"]: set(s["points"]) for s in site_configs}
 
@@ -204,7 +177,7 @@ def sync(dry_run=False):
         alert_name = parse_alert_name(alert_name_raw)
 
         if site_id is None:
-            print(f"[fila {row_num}] sitio {site_raw!r} no matchea ningún id de sites.yaml, se descarta")
+            print(f"[fila {row_num}] sitio {site_raw!r} no matchea ningún id de docs/sites.json, se descarta")
             continue
         if not email and not telegram_chat_id:
             print(f"[fila {row_num}] sin email ni telegram_chat_id, se descarta")

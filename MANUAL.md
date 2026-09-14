@@ -33,27 +33,30 @@ Cada hora, en un servidor de GitHub (no en tu compu):
 
 ## 2. Dos lugares de configuración distintos
 
-### `config/sites.yaml` (público — solo los SITIOS)
+### `docs/sites.json` (público — solo los SITIOS, generado automáticamente)
 
-Este archivo vive en el repo, visible para cualquiera. Define únicamente
-**dónde están los sitios**: coordenadas y elevación (msnm) del despegue y,
-si aplica, del aterrizaje. No tiene emails ni condiciones de nadie.
+Este archivo vive en el repo y lo sirve GitHub Pages, visible para
+cualquiera. Define únicamente **dónde están los sitios**: coordenadas y
+elevación (msnm) del despegue y, si aplica, del aterrizaje. No tiene
+emails ni condiciones de nadie.
 
-```yaml
-- id: gruenten
-  name: "Grünten (Allgäu, DE)"
-  timezone: "Europe/Berlin"
-  points:
-    launch:  { lat: 47.553, lon: 10.317, elevation_m: 1050 }
-    landing: { lat: 47.568, lon: 10.335, elevation_m: 780 }
+```json
+{
+  "id": "gruenten",
+  "name": "Grünten (Allgäu, DE)",
+  "timezone": "Europe/Berlin",
+  "points": {
+    "launch":  { "lat": 47.553, "lon": 10.317, "elevation_m": 1050 },
+    "landing": { "lat": 47.568, "lon": 10.335, "elevation_m": 780 }
+  }
+}
 ```
 
-Para editar: [config/sites.yaml en GitHub](https://github.com/kindmartin/condition-alert/blob/main/config/sites.yaml)
-→ lápiz (✏️) arriba a la derecha → editás → "Commit changes".
-
-**Coordenadas marcadas `TBD`** (Luján, Bariloche, aterrizaje de Grünten)
-son aproximadas — confirmalas con tus propios pines antes de confiar en
-ellas.
+**No se edita a mano.** Lo genera automáticamente
+`scripts/sync_sites.py` (corre cada 15 minutos, igual que el de
+suscriptores) leyendo la pestaña **"Sitios propuestos"** de la planilla —
+cualquier fila con **Estado = Aprobado** entra a la lista. Ver la sección 7
+para el flujo completo de cómo se propone y aprueba un sitio nuevo.
 
 ### Secret `SUBSCRIBERS_JSON` (privado — QUIÉN y QUÉ condición)
 
@@ -90,7 +93,7 @@ que es solo de referencia con datos falsos, no se usa en runtime):
 ```
 
 La clave de primer nivel (`"gruenten"`) tiene que ser el mismo `id` que el
-sitio en `sites.yaml`. Cada entrada de la lista es **una alerta** (no
+sitio en `docs/sites.json`. Cada entrada de la lista es **una alerta** (no
 necesariamente una persona distinta): todas sus capas deben cumplirse a la
 vez (Y) para que le llegue el aviso de esa alerta puntual.
 
@@ -348,17 +351,23 @@ Subject: Amigo del Viento — Piltriquitrón...
 
 ## 6. Agregar cosas nuevas
 
-**Un sitio nuevo** (un cerro/spot que todavía no existe): copiá un bloque
-de sitio en `sites.yaml` (público), cambiale `id`, `name`, coordenadas y
-elevación reales. Sin suscriptores todavía no manda nada — el bot salta
-sitios sin suscriptores (`no subscribers, skipping`).
+**Un sitio nuevo** (un cerro/spot que todavía no existe): alguien lo
+propone en [`docs/new-site.html`](docs/new-site.html) marcando el punto en
+el mapa satelital (sección 7 tiene el detalle completo), vos lo revisás y
+aprobás en la planilla, y en minutos queda disponible — no hace falta
+tocar código ni archivos del repo.
 
-**Un suscriptor nuevo** a un sitio que ya existe: agregás su entrada
-(nombre, email, capas) dentro del arreglo correspondiente en el JSON de
-`SUBSCRIBERS_JSON`, y actualizás el secret completo. No requiere tocar
-`sites.yaml` ni código.
+**Un suscriptor nuevo** a un sitio que ya existe: se anota solo en
+[`docs/index.html`](docs/index.html) (sección 7) — cae en la planilla y se
+sincroniza solo. Si preferís cargarlo a mano por algún motivo puntual,
+agregás su entrada (nombre, email, capas) dentro del arreglo
+correspondiente en el JSON de `SUBSCRIBERS_JSON` y actualizás el secret
+completo — pero ojo, la próxima sincronización automática lo pisa si la
+planilla no tiene esa misma entrada.
 
-## 7. Alta automática de suscriptores
+## 7. Alta de suscriptores y de sitios (automática)
+
+### 7.1 Suscriptores
 
 Hay dos "puertas de entrada" para que alguien se anote — las dos terminan
 en la MISMA planilla de respuestas, así que se pueden usar indistintamente
@@ -421,29 +430,74 @@ Para forzar una sincronización manual sin esperar: pestaña Actions →
 **"Sync subscribers"** → Run workflow (tildá `dry_run` para ver qué haría
 sin tocar el secret todavía).
 
-### Setup de la página propia (una sola vez)
+### 7.2 Sitios nuevos
+
+[`docs/new-site.html`](docs/new-site.html) deja a cualquiera proponer un
+sitio: elige el nombre, hace click en el mapa satelital para marcar el
+despegue (y opcionalmente el aterrizaje), y puede pedir una estimación
+automática de elevación (open-elevation.com — igual se puede corregir a
+mano). Esto es un **proceso independiente** del alta de suscriptores, con
+su propia cola de revisión — a propósito, porque un dato de sitio mal
+cargado rompe el chequeo para TODOS los suscriptores de ese sitio (no solo
+para quien lo cargó), a diferencia de un umbral de alerta mal puesto que
+solo afecta a esa persona.
+
+**Flujo completo:**
+
+1. Alguien completa `docs/new-site.html` → la respuesta cae en una pestaña
+   nueva de la misma planilla, **"Sitios propuestos"** (el Apps Script la
+   crea sola la primera vez), con **Estado = Pendiente**.
+2. Vos revisás la fila: ¿la coordenada tiene sentido? ¿la elevación es la
+   real o quedó la estimación automática sin confirmar? (lo mismo que
+   hicimos a mano para los primeros 9 sitios, con capturas satelitales).
+3. Si está bien, completás dos columnas que el proponente no llena:
+   - **Site ID**: un identificador corto sin espacios (ej. `cerro_tal`).
+   - **Timezone**: el nombre IANA de la zona horaria (ej.
+     `America/Argentina/Cordoba`, `Europe/Berlin`) — tiene que ser un
+     nombre válido o el sync lo rechaza.
+4. Cambiás **Estado** a **Aprobado**.
+5. En un rato (`sync-sites.yml` corre cada 15 minutos) el sitio aparece en
+   `docs/sites.json` y ya está disponible para que la gente se suscriba —
+   nada de esto toca código ni requiere un commit tuyo.
+
+Si ponés Estado en cualquier otra cosa (`Rechazado`, vacío, etc.) el sitio
+simplemente no entra a `sites.json` — no hace falta borrar la fila.
+
+**Los 9 sitios originales** (los que antes vivían en `config/sites.yaml`,
+ya eliminado) se cargaron una sola vez en esta misma planilla corriendo la
+función `seedExistingSites()` desde el editor de Apps Script (Extensions →
+Apps Script → elegís esa función en el desplegable al lado de "Run" →
+Run). Es segura de volver a correr, no duplica sitios que ya estén.
+
+### Setup de las páginas propias (una sola vez)
 
 1. **Habilitar GitHub Pages**: Settings → Pages → Source: "Deploy from a
    branch" → Branch: `main`, carpeta `/docs` → Save. GitHub te da la URL
    (ej. `https://kindmartin.github.io/condition-alert/`) — puede tardar
-   uno o dos minutos en estar disponible la primera vez.
+   uno o dos minutos en estar disponible la primera vez. La página de
+   sitios queda en `.../new-site.html`.
 2. **Desplegar el Apps Script**: abrí la planilla de respuestas → menú
    **Extensions → Apps Script** → borrá el contenido de `Code.gs` y pegá
    entero [`docs/apps_script.gs`](docs/apps_script.gs) → **Deploy → New
    deployment** → tipo **"Web app"** → Execute as: **Me**, Who has
    access: **Anyone** → Deploy. Te da una URL que termina en `/exec`
    — copiala.
-3. **Conectar la página con el script**: editá
-   [`docs/index.html`](docs/index.html), buscá la línea
-   `const APPS_SCRIPT_URL = "PEGAR_ACA...`, reemplazá el valor por la URL
-   del paso 2, y commiteá/pusheá el cambio.
-4. Probá completando la página vos mismo y confirmá que aparece la fila
-   nueva en la planilla de respuestas.
+3. **Conectar las páginas con el script**: la misma URL del paso 2 va en
+   `APPS_SCRIPT_URL` tanto en [`docs/index.html`](docs/index.html) como en
+   [`docs/new-site.html`](docs/new-site.html) — commiteá/pusheá el cambio.
+4. **Publicar "Sitios propuestos" como CSV**: corré `seedExistingSites()`
+   primero (para que la pestaña exista con datos) → en esa pestaña,
+   **Archivo → Compartir → Publicar en la web** → elegís la hoja "Sitios
+   propuestos" → formato CSV → Publicar → copiás la URL.
+5. Cargás esa URL como secret `SITES_SHEET_CSV_URL` (sección 8).
+6. Corré el workflow **"Sync sites"** manual una vez (Actions → Sync sites
+   → Run workflow) y confirmá que `docs/sites.json` se actualiza con los
+   9 sitios.
+7. Probá completando cada página vos mismo y confirmá que aparece la fila
+   nueva en la pestaña correspondiente de la planilla.
 
-Si alguna vez agregás un sitio nuevo en `config/sites.yaml`, acordate de
-sumarlo también al arreglo `SITES` dentro de `docs/index.html` (son datos
-duplicados a propósito, para que la página no dependa de leer YAML en el
-navegador).
+`docs/sites.json` ya no se edita a mano ni hace falta duplicarlo en
+ningún lado — las dos páginas HTML lo leen con `fetch()` al cargar.
 
 ## 8. Setup completo (para levantar tu propia instancia desde cero)
 
@@ -466,12 +520,15 @@ existe, el orden es:
    los commitees al repo — van directo al formulario de GitHub.
 4. **(Opcional) Bot de Telegram**: @BotFather → `/newbot` → guardás el
    token como secret `TELEGRAM_BOT_TOKEN`.
-5. **Sitios**: editá `config/sites.yaml` con tus propios lugares (sección 2).
+5. **Sitios**: seguí la sección 7.2 — armá la planilla, corré
+   `seedExistingSites()` con tus propios sitios iniciales (editá esa
+   función en `docs/apps_script.gs` antes de correrla), publicá "Sitios
+   propuestos" como CSV, y cargá el secret `SITES_SHEET_CSV_URL`.
 6. **Suscriptores**: para arrancar rápido, cargá el secret
    `SUBSCRIBERS_JSON` a mano (formato en
    [`config/subscribers.example.json`](config/subscribers.example.json)).
-   Para alta automática vía formulario, seguí la sección 7 completa
-   (Google Form → CSV publicado → secrets `SHEET_CSV_URL` y
+   Para alta automática vía la página propia o el Google Form, seguí la
+   sección 7.1 completa (CSV publicado → secrets `SHEET_CSV_URL` y
    `GH_PAT_FOR_SECRETS`, este último con permiso "Secrets: Read and write"
    sobre tu repo — se crea en
    [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)).
@@ -489,13 +546,17 @@ En Settings → Secrets and variables → Actions del repo:
   falta si algún suscriptor usa `telegram_chat_id`).
 - `SUBSCRIBERS_JSON`: la lista de suscriptores con sus condiciones (ver
   sección 2). **Ahora la reescribe automáticamente** el workflow de
-  sincronización (sección 7) — no hace falta tocarla a mano salvo para
+  sincronización (sección 7.1) — no hace falta tocarla a mano salvo para
   pruebas puntuales.
-- `SHEET_CSV_URL`: la URL pública de la planilla publicada como CSV (ver
-  sección 7 para cómo generarla).
+- `SHEET_CSV_URL`: la URL pública de la pestaña de respuestas de
+  suscriptores, publicada como CSV (ver sección 7.1 para cómo generarla).
+- `SITES_SHEET_CSV_URL`: la URL pública de la pestaña **"Sitios
+  propuestos"**, publicada como CSV por separado (ver sección 7.2).
 - `GH_PAT_FOR_SECRETS`: un token de GitHub con permiso "Secrets: Read and
-  write" sobre este repo — lo usa el workflow de sincronización para poder
-  actualizar `SUBSCRIBERS_JSON` por sí mismo.
+  write" sobre este repo — lo usa el workflow de sincronización de
+  suscriptores para poder actualizar `SUBSCRIBERS_JSON` por sí mismo. El
+  de sitios (`sync-sites.yml`) no lo necesita — commitea `docs/sites.json`
+  directo con el token automático que ya trae el workflow.
 
 Si alguna vez se rota el App Password, solo hace falta actualizar el
 secret `GMAIL_APP_PASSWORD` — no se toca código.
@@ -514,23 +575,30 @@ secret `GMAIL_APP_PASSWORD` — no se toca código.
 | Llega a spam | Marcar el primer mail como "No es spam" en Gmail suele bastar; al ser el mismo remitente todos los días debería dejar de pasar rápido. |
 | El workflow no corrió en la última hora | GitHub Actions en el plan gratuito puede demorar el disparo del cron unos minutos en horarios de mucha carga — es normal. |
 | `sync-subscribers` falla con error 401/403 | El `GH_PAT_FOR_SECRETS` venció, o no tiene permiso "Secrets: Read and write" sobre el repo. |
-| `Wind check` falla con `KeyError` de un nombre de punto (ej. `'landing'`) | Alguien eligió "Aterrizaje" en un sitio que solo tiene despegue configurado en `sites.yaml`. El sync ya descarta esas capas inválidas automáticamente (no debería volver a pasar), pero si ves esto en un secret cargado a mano, revisá que el `point` de cada capa exista en los `points` del sitio. |
-| Alguien no aparece después de completar el formulario | El sync corre solo 2 veces por día — puede tardar hasta 12hs. Para probar ya, corré el workflow manual (sección 7). |
+| `Wind check` falla con `KeyError` de un nombre de punto (ej. `'landing'`) | Alguien eligió "Aterrizaje" en un sitio que solo tiene despegue configurado. El sync de sitios y el de suscriptores ya descartan esas capas/sitios inválidos automáticamente (no debería volver a pasar), pero si ves esto en un secret cargado a mano, revisá que el `point` de cada capa exista en los `points` del sitio. |
+| Alguien no aparece después de completar una página/formulario | El sync corre cada 15 minutos — esperá un rato. Para probar ya, corré el workflow manual correspondiente (sección 7). |
+| Un sitio propuesto no aparece en `sites.json` aunque esté "Aprobado" | Revisá que **Site ID** y **Timezone** estén completos y que el timezone sea un nombre IANA válido (`sync-sites` lo rechaza si no) — mirá el log de la corrida en Actions. |
+| Longitud rarísima en "Sitios propuestos" (ej. `-2231.36...`) | Bug ya arreglado (commit del `wrap()` en `new-site.html`) — si ves una fila vieja así, es de antes del fix, borrala o corregila a mano. |
 
 ## 10. Dónde está cada cosa (para referencia)
 
-- Sitios (público): [`config/sites.yaml`](config/sites.yaml)
+- Sitios (público, generado — no editar a mano): [`docs/sites.json`](docs/sites.json)
+- Página de alta de suscriptores: [`docs/index.html`](docs/index.html)
+- Página de propuesta de sitios: [`docs/new-site.html`](docs/new-site.html)
+- Apps Script que recibe ambas páginas: [`docs/apps_script.gs`](docs/apps_script.gs)
 - Formato de suscriptores (ejemplo, no real): [`config/subscribers.example.json`](config/subscribers.example.json)
 - Lógica del chequeo de viento, un archivo por responsabilidad:
   - [`src/fetch_forecast.py`](src/fetch_forecast.py): arma un solo request batcheado a Open-Meteo para todos los puntos de todos los sitios.
   - [`src/interpolate.py`](src/interpolate.py): calcula viento a alturas arbitrarias interpolando entre niveles de presión.
   - [`src/rules.py`](src/rules.py): evalúa las capas de un suscriptor contra el pronóstico, hora por hora.
   - [`src/notify.py`](src/notify.py): arma y manda el mail/Telegram.
-  - [`src/state.py`](src/state.py): lleva el registro de a quién ya se le mandó, para el dedup.
+  - [`src/state.py`](src/state.py): lleva el registro de qué alerta está prendida/apagada.
   - [`src/main.py`](src/main.py): orquesta todo lo anterior, es lo que corre el cron cada hora.
 - El cron de viento: [`.github/workflows/wind-check.yml`](.github/workflows/wind-check.yml)
-- El cron de sincronización: [`.github/workflows/sync-subscribers.yml`](.github/workflows/sync-subscribers.yml), lógica en [`scripts/`](scripts)
-- Historial de qué mails ya se mandaron: [`state/sent_log.json`](state/sent_log.json)
+- El cron de sincronización de suscriptores: [`.github/workflows/sync-subscribers.yml`](.github/workflows/sync-subscribers.yml)
+- El cron de sincronización de sitios: [`.github/workflows/sync-sites.yml`](.github/workflows/sync-sites.yml)
+- Lógica de ambos syncs, más helpers compartidos (`sheet_columns.py`): [`scripts/`](scripts)
+- Historial de qué alertas están prendidas: [`state/sent_log.json`](state/sent_log.json)
 - Intro general (para quien no va a operar el bot, solo usarlo): [`README.md`](README.md)
 
 ## 11. Limitaciones conocidas (v1)
@@ -541,7 +609,10 @@ secret `GMAIL_APP_PASSWORD` — no se toca código.
   hora que califica, no se manda un mail actualizado con el detalle nuevo
   — solo se avisa en las transiciones prendida/apagada (sección 5), no en
   cada cambio de horario dentro de una ventana que sigue activa.
-- Coordenadas del aterrizaje de Grünten son aproximadas (`TBD` en
-  `sites.yaml`) — confirmar antes de confiar en ellas.
-- Agregar/sacar sitios sigue requiriendo editar `sites.yaml` a mano
-  (commit al repo); solo los suscriptores tienen alta automática.
+- Coordenadas del aterrizaje de Grünten son aproximadas — confirmar antes
+  de confiar en ellas.
+- La elevación automática de `docs/new-site.html` (open-elevation.com) es
+  una estimación de modelo satelital, no siempre exacta — confirmarla al
+  aprobar un sitio si se conoce el dato real.
+- Sitios propuestos requieren revisión humana (Estado = Aprobado) antes de
+  quedar activos — a propósito, no es un bug (sección 7.2).

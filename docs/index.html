@@ -201,28 +201,10 @@
 </div>
 
 <script>
-// Mirror of config/sites.yaml — update both when a site is added/changed.
-const SITES = [
-  { id: "gruenten", name: "Grünten (Allgäu, DE)", points: {
-      launch: { lat: 47.553, lon: 10.317, elevation_m: 1050 },
-      landing: { lat: 47.568, lon: 10.335, elevation_m: 780 } } },
-  { id: "lujan", name: "Luján (Buenos Aires, AR)", points: {
-      launch: { lat: -34.57, lon: -59.05, elevation_m: 30 } } },
-  { id: "cerro_otto", name: "Cerro Otto (Bariloche, AR)", points: {
-      launch: { lat: -41.14408, lon: -71.37665, elevation_m: 1380 } } },
-  { id: "cerro_san_martin", name: "Cerro San Martín / La Vieja (Bariloche, AR)", points: {
-      launch: { lat: -41.1578, lon: -71.4289, elevation_m: 1250 } } },
-  { id: "piltriquitron", name: "Piltriquitrón (El Bolsón, AR)", points: {
-      launch: { lat: -41.97461, lon: -71.48016, elevation_m: 1115 } } },
-  { id: "vicente_lopez", name: "Vicente López (Buenos Aires, AR)", points: {
-      launch: { lat: -34.52833, lon: -58.46155, elevation_m: 8 } } },
-  { id: "loma_bola", name: "Loma Bola (Tucumán, AR)", points: {
-      launch: { lat: -26.82281, lon: -65.36882, elevation_m: 1355 } } },
-  { id: "merlo", name: "Merlo (San Luis, AR)", points: {
-      launch: { lat: -32.36947, lon: -64.9391, elevation_m: 1772 } } },
-  { id: "cuchi_corral", name: "Cuchi Corral (Córdoba, AR)", points: {
-      launch: { lat: -30.96712, lon: -64.58465, elevation_m: 1103 } } },
-];
+// Loaded at runtime from docs/sites.json (kept up to date by
+// scripts/sync_sites.py from the "Sitios propuestos" sheet) — nothing
+// hardcoded here anymore.
+let SITES = [];
 
 // Fill after deploying the Apps Script (see docs/apps_script.gs / MANUAL.md).
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxarAZ2miZJD1R0-Jxzfj3vgePfMPpR_maytghbA06Y-puh-lb1puN5_cC7b09HCnT2/exec";
@@ -233,11 +215,14 @@ const siteSelect = document.getElementById("site");
 const pointSelect = document.getElementById("point");
 const pointHint = document.getElementById("pointHint");
 
-for (const site of SITES) {
-  const opt = document.createElement("option");
-  opt.value = site.id;
-  opt.textContent = site.name;
-  siteSelect.appendChild(opt);
+function populateSiteDropdown() {
+  siteSelect.innerHTML = "";
+  for (const site of SITES) {
+    const opt = document.createElement("option");
+    opt.value = site.id;
+    opt.textContent = site.name;
+    siteSelect.appendChild(opt);
+  }
 }
 
 function currentSite() {
@@ -489,11 +474,24 @@ document.getElementById("alertForm").addEventListener("submit", async (evt) => {
 });
 
 // ---- Init ----
-refreshPointOptions();
-initMap();
-updateMap();
-renderCompass();
-syncMetersVisibility();
+async function init() {
+  const status = document.getElementById("status");
+  try {
+    const resp = await fetch("sites.json", { cache: "no-store" });
+    SITES = await resp.json();
+  } catch (err) {
+    status.className = "err";
+    status.textContent = "No se pudo cargar la lista de sitios (sites.json). Recargá la página.";
+    return;
+  }
+  populateSiteDropdown();
+  refreshPointOptions();
+  initMap();
+  updateMap();
+  renderCompass();
+  syncMetersVisibility();
+}
+init();
 </script>
 </body>
 </html>

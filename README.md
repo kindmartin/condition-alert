@@ -21,21 +21,26 @@ cualquiera lo extienda.
 Grünten (Allgäu, Alemania), Cerro Otto, Cerro San Martín / La Vieja,
 Piltriquitrón, Vicente López, Loma Bola, Merlo, Cuchi Corral y Luján
 (Argentina). Ver la lista completa y actualizada en
-[`config/sites.yaml`](config/sites.yaml).
+[`docs/sites.json`](docs/sites.json).
 
 ## Cómo sumarte (como piloto)
 
-Completá el [formulario de alta](https://forms.gle/gz4qX5SmnnXAXsAD6):
-elegís tu sitio, cómo querés que te avisen (mail y/o Telegram), y la
-condición de viento que te interesa. Se sincroniza solo, un par de veces
-por día — no hace falta pedirle nada a nadie.
+Completá la [página de alta](https://kindmartin.github.io/condition-alert/):
+elegís tu sitio en un mapa satelital, cómo querés que te avisen (mail y/o
+Telegram), y la condición de viento que te interesa (con un selector
+visual para la dirección). Se sincroniza solo cada 15 minutos — no hace
+falta pedirle nada a nadie.
+
+¿Tu sitio no está en la lista? Proponelo en la
+[página de sitios nuevos](https://kindmartin.github.io/condition-alert/new-site.html)
+marcando el punto en el mapa — se revisa antes de activarse.
 
 ## Cómo sumarte al proyecto
 
 Está recién arrancando. Si querés aportar ideas, reportar algo que no
-anda, pedir que se sume un sitio nuevo, o meter mano al código — bienvenido.
-Para el detalle de cómo está armado, cómo operarlo, y cómo replicarlo para
-tu propio club, ver [`MANUAL.md`](MANUAL.md).
+anda, o meter mano al código — bienvenido. Para el detalle de cómo está
+armado, cómo operarlo, y cómo replicarlo para tu propio club, ver
+[`MANUAL.md`](MANUAL.md).
 
 ⚠️ Es un pronóstico automático — verificá siempre las condiciones en el
 lugar antes de volar.
