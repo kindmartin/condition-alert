@@ -28,9 +28,16 @@ const PROPOSALS_HEADERS = [
   "Estado",     // Pendiente / Aprobado / Rechazado — dropdown, el admin lo cambia a mano
   "Site ID",    // opcional: slug único (ej. "cerro_tal"); si se deja vacío, sync_sites.py lo autogenera del nombre
   "Timezone",   // opcional: IANA (ej. "America/Argentina/Cordoba"); si se deja vacío, sync_sites.py lo calcula de las coordenadas
+  "Modelo",     // opcional: modelo de pronóstico de Open-Meteo; si se deja vacío, se usa best_match (default)
 ];
 
 const ESTADO_OPTIONS = ["Pendiente", "Aprobado", "Rechazado"];
+// Debe coincidir con ALLOWED_MODELS en src/fetch_forecast.py — "" queda
+// disponible en el dropdown para volver al default (best_match).
+const MODELO_OPTIONS = [
+  "", "best_match", "gfs_seamless", "ecmwf_ifs025", "icon_seamless",
+  "jma_seamless", "gem_seamless", "meteofrance_seamless", "gfs_graphcast025",
+];
 
 function applyEstadoDropdown(sheet) {
   const estadoColIdx = PROPOSALS_HEADERS.indexOf("Estado") + 1;
@@ -41,17 +48,31 @@ function applyEstadoDropdown(sheet) {
   sheet.getRange(2, estadoColIdx, 1000, 1).setDataValidation(rule);
 }
 
+function applyModeloDropdown(sheet) {
+  const modeloColIdx = PROPOSALS_HEADERS.indexOf("Modelo") + 1;
+  const rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(MODELO_OPTIONS, true)
+    .setAllowInvalid(true) // true: por si se agrega un modelo nuevo a Open-Meteo antes de actualizar esta lista
+    .build();
+  sheet.getRange(2, modeloColIdx, 1000, 1).setDataValidation(rule);
+}
+
 /**
  * Run this ONCE, manually, if "Sitios propuestos" already existed before
- * this dropdown was added (new sheets get it automatically). Safe to
+ * these dropdowns were added (new sheets get them automatically). Safe to
  * re-run.
  */
-function setupEstadoDropdown() {
+function setupDropdowns() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PROPOSALS_SHEET_NAME);
   if (!sheet) {
     throw new Error(`No existe la pestaña "${PROPOSALS_SHEET_NAME}" todavía — proponé un sitio primero o corré seedExistingSites().`);
   }
+  if (sheet.getLastColumn() < PROPOSALS_HEADERS.length) {
+    sheet.getRange(1, sheet.getLastColumn() + 1, 1, PROPOSALS_HEADERS.length - sheet.getLastColumn())
+      .setValues([PROPOSALS_HEADERS.slice(sheet.getLastColumn())]);
+  }
   applyEstadoDropdown(sheet);
+  applyModeloDropdown(sheet);
 }
 
 function doPost(e) {
@@ -111,6 +132,7 @@ function handleSiteProposal(payload) {
     sheet = ss.insertSheet(PROPOSALS_SHEET_NAME);
     sheet.appendRow(PROPOSALS_HEADERS);
     applyEstadoDropdown(sheet);
+    applyModeloDropdown(sheet);
   }
   sheet.appendRow([
     new Date(),
@@ -164,6 +186,7 @@ function seedExistingSites() {
     sheet.appendRow(PROPOSALS_HEADERS);
   }
   applyEstadoDropdown(sheet);
+  applyModeloDropdown(sheet);
 
   const idColIdx = PROPOSALS_HEADERS.indexOf("Site ID");
   const existingIds = sheet.getLastRow() > 1

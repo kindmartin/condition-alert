@@ -27,7 +27,9 @@ from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from fetch_forecast import ALLOWED_MODELS, DEFAULT_MODEL  # noqa: E402
 from sheet_columns import cell, find_col, normalize, parse_float
 from sheets import fetch_rows
 from timezonefinder import TimezoneFinder
@@ -70,7 +72,11 @@ def sync(dry_run=False):
         "aterrizaje_lon": find_col(headers_norm, "aterrizaje", "lon"),
         "aterrizaje_elev": find_col(headers_norm, "aterrizaje", "elev"),
     }
-    missing = [k for k in cols if cols[k] is None]
+    # Optional column: sheets created before this feature don't have it, and
+    # that's fine — every site just falls back to best_match.
+    cols["modelo"] = find_col(headers_norm, "modelo")
+
+    missing = [k for k in cols if k != "modelo" and cols[k] is None]
     if missing:
         print(f"ERROR: no encontré columnas para {missing} en el encabezado {rows[0]}", file=sys.stderr)
         sys.exit(1)
@@ -134,10 +140,16 @@ def sync(dry_run=False):
             else:
                 points["landing"] = {"lat": landing_lat, "lon": landing_lon, "elevation_m": landing_elev}
 
+        modelo_raw = normalize(cell(row, cols["modelo"])) if cols["modelo"] is not None else ""
+        model = modelo_raw if modelo_raw in ALLOWED_MODELS else DEFAULT_MODEL
+        if modelo_raw and model != modelo_raw:
+            print(f"[fila {row_num}] modelo {modelo_raw!r} no reconocido para site_id {site_id!r}, se usa {DEFAULT_MODEL}")
+
         sites_by_id[site_id] = {
             "id": site_id,
             "name": name or site_id,
             "timezone": timezone,
+            "model": model,
             "points": points,
         }
 
