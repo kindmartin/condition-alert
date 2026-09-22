@@ -1,14 +1,4 @@
 {
-  "cerro_otto|diegosimari13@hotmail.com#Alerta 2": {
-    "qualifying_hours": [
-      "2026-09-21T10:00",
-      "2026-09-21T20:00",
-      "2026-09-21T21:00",
-      "2026-09-21T22:00",
-      "2026-09-21T23:00"
-    ],
-    "since": "2026-09-19T00:22:35.875895-03:00"
-  },
   "cuchi_corral|aerocuchi@gmail.com#Alerta 1": {
     "qualifying_hours": [
       "2026-09-20T07:00",
