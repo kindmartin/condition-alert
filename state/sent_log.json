@@ -1,4 +1,14 @@
 {
+  "cerro_otto|diegosimari13@hotmail.com#Alerta 2": {
+    "qualifying_hours": [
+      "2026-09-26T03:00",
+      "2026-09-26T05:00",
+      "2026-09-26T07:00",
+      "2026-09-26T08:00",
+      "2026-09-26T09:00"
+    ],
+    "since": "2026-09-24T01:23:49.679333-03:00"
+  },
   "cerro_otto|kindmartin@gmail.com#Alerta 3": {
     "qualifying_hours": [
       "2026-09-23T20:00"
