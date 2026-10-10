@@ -13,20 +13,5 @@
       "2026-10-05T23:00"
     ],
     "since": "2026-10-03T00:32:37.366254-03:00"
-  },
-  "cerro_otto|kindmartin@gmail.com#Alerta 3": {
-    "qualifying_hours": [
-      "2026-10-12T12:00"
-    ],
-    "since": "2026-10-10T00:26:42.408970-03:00"
-  },
-  "wartturm_grunberg|kindmartin@gmail.com#Alerta 2": {
-    "qualifying_hours": [
-      "2026-10-07T14:00",
-      "2026-10-07T15:00",
-      "2026-10-07T16:00",
-      "2026-10-07T17:00"
-    ],
-    "since": "2026-10-05T00:18:58.697729+02:00"
   }
 }
