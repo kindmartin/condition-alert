@@ -14,11 +14,18 @@
     ],
     "since": "2026-10-03T00:32:37.366254-03:00"
   },
-  "cuchi_corral|aerocuchi@gmail.com#Alerta 1": {
+  "cerro_otto|kindmartin@gmail.com#Alerta 3": {
     "qualifying_hours": [
-      "2026-10-14T14:00"
+      "2026-10-15T17:00",
+      "2026-10-15T18:00",
+      "2026-10-15T19:00",
+      "2026-10-16T16:00",
+      "2026-10-16T17:00",
+      "2026-10-16T18:00",
+      "2026-10-16T19:00",
+      "2026-10-16T20:00"
     ],
-    "since": "2026-10-13T09:33:34.733882-03:00"
+    "since": "2026-10-14T09:29:59.776648-03:00"
   },
   "wartturm_grunberg|kindmartin@gmail.com#Alerta 2": {
     "qualifying_hours": [
