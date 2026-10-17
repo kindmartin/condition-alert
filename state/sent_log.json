@@ -14,19 +14,6 @@
     ],
     "since": "2026-10-03T00:32:37.366254-03:00"
   },
-  "cerro_otto|kindmartin@gmail.com#Alerta 3": {
-    "qualifying_hours": [
-      "2026-10-17T09:00",
-      "2026-10-17T13:00",
-      "2026-10-17T15:00",
-      "2026-10-18T14:00",
-      "2026-10-18T15:00",
-      "2026-10-18T16:00",
-      "2026-10-18T19:00",
-      "2026-10-18T20:00"
-    ],
-    "since": "2026-10-16T21:48:47.664579-03:00"
-  },
   "cerro_otto|paraglidingconditionalert@gmail.com#Alerta 1": {
     "qualifying_hours": [
       "2026-10-17T18:00"
