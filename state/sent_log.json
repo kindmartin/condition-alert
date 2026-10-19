@@ -20,12 +20,6 @@
     ],
     "since": "2026-10-17T00:21:08.690116-03:00"
   },
-  "cerro_otto|paraglidingconditionalert@gmail.com#Alerta 1": {
-    "qualifying_hours": [
-      "2026-10-20T17:00"
-    ],
-    "since": "2026-10-19T10:23:37.091630-03:00"
-  },
   "cuchi_corral|aerocuchi@gmail.com#Alerta 1": {
     "qualifying_hours": [
       "2026-10-18T12:00",
@@ -41,11 +35,5 @@
       "2026-10-20T07:00"
     ],
     "since": "2026-10-18T22:34:20.511541-03:00"
-  },
-  "wartturm_grunberg|kindmartin@gmail.com#Alerta 2": {
-    "qualifying_hours": [
-      "2026-10-21T20:00"
-    ],
-    "since": "2026-10-19T19:17:25.336149+02:00"
   }
 }
